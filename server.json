@@ -1,16 +1,16 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.chrischall/canvas-mcp",
+  "name": "io.github.chrischall/instructure-mcp",
   "description": "Canvas LMS (Instructure) for Claude — courses, grades, assignments, announcements, planner, conversations",
   "repository": {
-    "url": "https://github.com/chrischall/canvas-mcp",
+    "url": "https://github.com/chrischall/instructure-mcp",
     "source": "github"
   },
   "version": "0.1.0",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "canvas-mcp",
+      "identifier": "instructure-mcp",
       "version": "0.1.0",
       "transport": {
         "type": "stdio"

@@ -1,12 +1,12 @@
 {
-  "name": "canvas-mcp",
+  "name": "instructure-mcp",
   "version": "0.1.0",
-  "mcpName": "io.github.chrischall/canvas-mcp",
+  "mcpName": "io.github.chrischall/instructure-mcp",
   "description": "Canvas LMS (Instructure) MCP server — student/observer read access with optional file download",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chrischall/canvas-mcp.git"
+    "url": "git+https://github.com/chrischall/instructure-mcp.git"
   },
   "license": "MIT",
   "keywords": [
@@ -24,7 +24,7 @@
   ],
   "type": "module",
   "bin": {
-    "canvas-mcp": "dist/index.js"
+    "instructure-mcp": "dist/index.js"
   },
   "files": [
     "dist",

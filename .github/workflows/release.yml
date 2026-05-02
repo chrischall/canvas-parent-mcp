@@ -59,7 +59,7 @@ jobs:
           import zipfile, pathlib, os
 
           version = os.environ["VERSION"]
-          skill_name = "canvas-mcp"
+          skill_name = "instructure-mcp"
           out = pathlib.Path(f"{skill_name}-{version}.skill")
 
           with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -71,7 +71,7 @@ jobs:
       - name: Build .mcpb bundle
         run: |
           npx @anthropic-ai/mcpb pack
-          mv canvas-mcp.mcpb "canvas-mcp-${VERSION}.mcpb"
+          mv instructure-mcp.mcpb "instructure-mcp-${VERSION}.mcpb"
 
       - name: Publish to npm
         run: npm publish --access public --provenance
@@ -108,6 +108,6 @@ jobs:
         uses: softprops/action-gh-release@v3.0.0
         with:
           files: |
-            canvas-mcp-${{ env.VERSION }}.skill
-            canvas-mcp-${{ env.VERSION }}.mcpb
+            instructure-mcp-${{ env.VERSION }}.skill
+            instructure-mcp-${{ env.VERSION }}.mcpb
           generate_release_notes: true

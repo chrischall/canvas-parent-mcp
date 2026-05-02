@@ -1,6 +1,8 @@
-# canvas-mcp
+# instructure-mcp
 
 MCP server for Canvas LMS (Instructure) — token-primary auth with optional OAuth refresh.
+
+The npm package is `instructure-mcp` (vendor-name pattern, mirroring sibling `infinitecampus-mcp`). Tools, env vars, and the user-facing skill stay branded `canvas` / `Canvas` because that's what users say.
 
 ## Build & Test
 
@@ -35,6 +37,18 @@ Do NOT manually bump versions or create tags unless the user explicitly asks. Ve
 ## Coverage
 
 `vitest.config.ts` enforces 100% lines/functions/branches/statements across `src/` (excluding `src/index.ts`, the stdio entry point). Adding a new tool or branch requires a test to keep CI green.
+
+## Naming
+
+| Surface | Value | Why |
+|---|---|---|
+| npm package / `bin` | `instructure-mcp` | `canvas-mcp` and `canvas-lms-mcp` are taken on npm; vendor-name pattern matches sibling `infinitecampus-mcp` |
+| Tool prefix | `canvas_*` | Users say "Canvas" |
+| Env var prefix | `CANVAS_*` | Users say "Canvas" |
+| Skill name (frontmatter) | `canvas` | Users invoke via `/canvas` |
+| `.mcp.json` server key | `canvas` | User-facing alias |
+| `McpServer` name | `canvas` | What clients see |
+| Display name | `Canvas LMS` | User-facing |
 
 ## Canvas notes
 

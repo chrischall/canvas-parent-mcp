@@ -1,6 +1,6 @@
 {
   "dxt_version": "0.1",
-  "name": "canvas-mcp",
+  "name": "instructure-mcp",
   "version": "0.1.0",
   "description": "Canvas LMS (Instructure) MCP — student/observer read access with optional file download",
   "author": {

@@ -1,14 +1,14 @@
 ---
-name: canvas-mcp
+name: instructure-mcp
 description: This skill should be used when the user asks about Canvas LMS data — their own student account or any observed student. Triggers on phrases like "check Canvas", "what's my grade", "Canvas inbox", "what's due", "missing assignments", "Canvas LMS", "Instructure", "course announcements", "syllabus", or any request about courses, assignments, grades, conversations, announcements, planner items, or files in Canvas.
 ---
 
-# canvas-mcp
+# instructure-mcp
 
 MCP server for Canvas LMS (Instructure) — read courses, grades, assignments, announcements, planner items, and conversations; download course files.
 
-- **npm:** [npmjs.com/package/canvas-mcp](https://www.npmjs.com/package/canvas-mcp)
-- **Source:** [github.com/chrischall/canvas-mcp](https://github.com/chrischall/canvas-mcp)
+- **npm:** [npmjs.com/package/instructure-mcp](https://www.npmjs.com/package/instructure-mcp)
+- **Source:** [github.com/chrischall/instructure-mcp](https://github.com/chrischall/instructure-mcp)
 
 ## Setup
 
@@ -21,7 +21,7 @@ Add to `.mcp.json` in your project or `~/.claude/mcp.json`:
   "mcpServers": {
     "canvas": {
       "command": "npx",
-      "args": ["-y", "canvas-mcp"],
+      "args": ["-y", "instructure-mcp"],
       "env": {
         "CANVAS_BASE_URL": "https://cms.instructure.com",
         "CANVAS_TOKEN": "your-personal-access-token"
@@ -34,8 +34,8 @@ Add to `.mcp.json` in your project or `~/.claude/mcp.json`:
 ### Option B — from source
 
 ```bash
-git clone https://github.com/chrischall/canvas-mcp
-cd canvas-mcp
+git clone https://github.com/chrischall/instructure-mcp
+cd instructure-mcp
 npm install && npm run build
 ```
 

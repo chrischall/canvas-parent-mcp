@@ -1,6 +1,8 @@
-# canvas-mcp
+# instructure-mcp
 
 MCP server for Canvas LMS (Instructure). Targets `https://cms.instructure.com` by default but works against any Canvas instance.
+
+Users interact via the `canvas_*` tool prefix — the npm package is `instructure-mcp` (the parent vendor) so it doesn't collide with other Canvas-named packages.
 
 ## Tools
 

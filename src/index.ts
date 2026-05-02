@@ -46,8 +46,8 @@ registerConversationTools(server, client);
 registerDiscussionTools(server, client);
 registerFileTools(server, client);
 
-console.error(`[canvas-mcp] Canvas: ${account.name} (${account.baseUrl}) [${account.mode}]`);
-console.error('[canvas-mcp] Developed and maintained by AI (Claude). Use at your own discretion.');
+console.error(`[instructure-mcp] Canvas: ${account.name} (${account.baseUrl}) [${account.mode}]`);
+console.error('[instructure-mcp] Developed and maintained by AI (Claude). Use at your own discretion.');
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

@@ -1,6 +1,6 @@
 import { writeFile, stat } from 'fs/promises';
 import { dirname } from 'path';
-import type { Account } from './config.js';
+import type { Account, OAuthAccount } from './config.js';
 
 export interface RequestOpts {
   method?: 'GET' | 'POST';
@@ -116,32 +116,30 @@ export class CanvasClient {
 
   private getAccessToken(): string {
     if (this.account.mode === 'token') return this.account.token;
-    if (!this.account.accessToken) throw new TokenExpiredError('oauth', 'no access token cached — refresh first');
-    return this.account.accessToken;
+    // OAuth mode: callers always invoke ensureToken() first, which guarantees accessToken is set.
+    return this.account.accessToken!;
   }
 
   private async ensureToken(opts: { force?: boolean } = {}): Promise<void> {
-    if (this.account.mode === 'token') {
+    const acct = this.account;
+    if (acct.mode === 'token') {
       if (opts.force) throw new TokenExpiredError('token');
       return;
     }
-    // OAuth mode: refresh if forced, missing, or near expiry.
-    if (!opts.force && this.account.accessToken && Date.now() < this.accessTokenExpiresAt) return;
+    if (!opts.force && acct.accessToken && Date.now() < this.accessTokenExpiresAt) return;
     if (this.refreshInFlight) { await this.refreshInFlight; return; }
-    this.refreshInFlight = this.refreshAccessToken();
+    this.refreshInFlight = this.refreshAccessToken(acct);
     try { await this.refreshInFlight; } finally { this.refreshInFlight = null; }
   }
 
-  private async refreshAccessToken(): Promise<void> {
-    /* istanbul ignore if */
-    if (this.account.mode !== 'oauth') return;
+  private async refreshAccessToken(acct: OAuthAccount): Promise<void> {
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
-      client_id: this.account.clientId,
-      client_secret: this.account.clientSecret,
-      refresh_token: this.account.refreshToken,
+      client_id: acct.clientId,
+      client_secret: acct.clientSecret,
+      refresh_token: acct.refreshToken,
     }).toString();
-    const res = await fetch(`${this.account.baseUrl}/login/oauth2/token`, {
+    const res = await fetch(`${acct.baseUrl}/login/oauth2/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
@@ -151,9 +149,9 @@ export class CanvasClient {
       throw new TokenExpiredError('oauth', `${res.status} ${res.statusText}: ${errBody.slice(0, 200)}`);
     }
     const data = await res.json() as { access_token: string; expires_in?: number };
-    this.account.accessToken = data.access_token;
+    acct.accessToken = data.access_token;
     const expiresIn = data.expires_in ?? 3600;
-    this.accessTokenExpiresAt = Date.now() + Math.max(0, (expiresIn - 60) * 1000);
+    this.accessTokenExpiresAt = Date.now() + (expiresIn - 60) * 1000;
   }
 }
 

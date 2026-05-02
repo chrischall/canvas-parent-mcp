@@ -29,7 +29,7 @@ export function loadAccount(env: Record<string, string | undefined> = process.en
     throw new Error(`CANVAS_BASE_URL must be an https URL, got: '${baseUrl}'`);
   }
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-  const name = env.CANVAS_NAME || hostFromUrl(cleanBaseUrl);
+  const name = env.CANVAS_NAME || new URL(cleanBaseUrl).host;
 
   const token = env.CANVAS_TOKEN;
   const clientId = env.CANVAS_CLIENT_ID;
@@ -78,12 +78,4 @@ export function loadAccount(env: Record<string, string | undefined> = process.en
     'Missing Canvas auth config. Set either CANVAS_TOKEN (personal access token) ' +
     'or all three of CANVAS_CLIENT_ID, CANVAS_CLIENT_SECRET, CANVAS_REFRESH_TOKEN.',
   );
-}
-
-function hostFromUrl(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
 }

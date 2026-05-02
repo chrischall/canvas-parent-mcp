@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "canvas": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/bundle.js"],
+      "env": {
+        "CANVAS_BASE_URL": "${CANVAS_BASE_URL}",
+        "CANVAS_TOKEN": "${CANVAS_TOKEN}",
+        "CANVAS_CLIENT_ID": "${CANVAS_CLIENT_ID}",
+        "CANVAS_CLIENT_SECRET": "${CANVAS_CLIENT_SECRET}",
+        "CANVAS_REFRESH_TOKEN": "${CANVAS_REFRESH_TOKEN}",
+        "CANVAS_NAME": "${CANVAS_NAME}"
+      }
+    }
+  }
+}

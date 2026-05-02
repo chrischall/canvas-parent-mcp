@@ -1,0 +1,23 @@
+{
+  "name": "canvas-mcp",
+  "displayName": "Canvas LMS",
+  "version": "0.1.0",
+  "description": "Canvas LMS (Instructure) MCP server for Claude — courses, grades, assignments, announcements, planner, conversations, files",
+  "author": {
+    "name": "Chris Hall",
+    "email": "chris.c.hall@gmail.com"
+  },
+  "homepage": "https://github.com/chrischall/canvas-mcp",
+  "repository": "https://github.com/chrischall/canvas-mcp",
+  "license": "MIT",
+  "keywords": [
+    "canvas",
+    "canvas-lms",
+    "instructure",
+    "school",
+    "education",
+    "mcp"
+  ],
+  "skills": "./SKILL.md",
+  "mcp": "./.mcp.json"
+}

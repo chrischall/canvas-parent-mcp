@@ -1,0 +1,61 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.chrischall/canvas-mcp",
+  "description": "Canvas LMS (Instructure) for Claude — courses, grades, assignments, announcements, planner, conversations",
+  "repository": {
+    "url": "https://github.com/chrischall/canvas-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "canvas-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CANVAS_BASE_URL",
+          "description": "Canvas instance base URL, e.g. https://cms.instructure.com",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "CANVAS_TOKEN",
+          "description": "Canvas personal access token (set this OR all three OAuth vars)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "CANVAS_CLIENT_ID",
+          "description": "Canvas OAuth client ID (required if not using CANVAS_TOKEN)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "CANVAS_CLIENT_SECRET",
+          "description": "Canvas OAuth client secret (required if not using CANVAS_TOKEN)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "CANVAS_REFRESH_TOKEN",
+          "description": "Canvas OAuth refresh token (required if not using CANVAS_TOKEN)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "CANVAS_NAME",
+          "description": "Friendly name for the Canvas instance (defaults to the host portion of the base URL)",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

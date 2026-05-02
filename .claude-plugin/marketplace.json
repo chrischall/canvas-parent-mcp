@@ -1,0 +1,36 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "canvas-mcp",
+  "owner": {
+    "name": "Chris Hall",
+    "email": "chris.c.hall@gmail.com"
+  },
+  "metadata": {
+    "description": "MCP server for Canvas LMS (Instructure) — courses, grades, assignments, announcements, planner, conversations, files",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "canvas-mcp",
+      "displayName": "Canvas LMS",
+      "source": "./",
+      "description": "Canvas LMS (Instructure) MCP server for Claude — student/observer access via natural language",
+      "version": "0.1.0",
+      "author": {
+        "name": "Chris Hall"
+      },
+      "homepage": "https://github.com/chrischall/canvas-mcp",
+      "repository": "https://github.com/chrischall/canvas-mcp",
+      "license": "MIT",
+      "keywords": [
+        "canvas",
+        "canvas-lms",
+        "instructure",
+        "school",
+        "education",
+        "mcp"
+      ],
+      "category": "productivity"
+    }
+  ]
+}

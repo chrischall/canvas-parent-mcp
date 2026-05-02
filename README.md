@@ -1,8 +1,8 @@
-# instructure-mcp
+# canvas-parent-mcp
 
-MCP server for Canvas LMS (Instructure). Targets `https://cms.instructure.com` by default but works against any Canvas instance.
+MCP server for Canvas LMS (Instructure), scoped for parent observers and student self-access. Targets `https://cms.instructure.com` by default but works against any Canvas instance.
 
-Users interact via the `canvas_*` tool prefix — the npm package is `instructure-mcp` (the parent vendor) so it doesn't collide with other Canvas-named packages.
+Mirrors the read-only parent-portal scope of sibling [`infinitecampus-mcp`](https://github.com/chrischall/infinitecampus-mcp). Users interact via the `canvas_*` tool prefix.
 
 ## Tools
 

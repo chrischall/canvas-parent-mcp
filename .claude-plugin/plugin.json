@@ -1,5 +1,5 @@
 {
-  "name": "instructure-mcp",
+  "name": "canvas-parent-mcp",
   "displayName": "Canvas LMS",
   "version": "0.1.0",
   "description": "Canvas LMS (Instructure) MCP server for Claude — courses, grades, assignments, announcements, planner, conversations, files",
@@ -7,13 +7,15 @@
     "name": "Chris Hall",
     "email": "chris.c.hall@gmail.com"
   },
-  "homepage": "https://github.com/chrischall/instructure-mcp",
-  "repository": "https://github.com/chrischall/instructure-mcp",
+  "homepage": "https://github.com/chrischall/canvas-parent-mcp",
+  "repository": "https://github.com/chrischall/canvas-parent-mcp",
   "license": "MIT",
   "keywords": [
     "canvas",
     "canvas-lms",
+    "canvas-parent",
     "instructure",
+    "observer",
     "school",
     "education",
     "mcp"

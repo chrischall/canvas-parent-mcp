@@ -1,8 +1,8 @@
-# instructure-mcp
+# canvas-parent-mcp
 
-MCP server for Canvas LMS (Instructure) — token-primary auth with optional OAuth refresh.
+MCP server for Canvas LMS (Instructure) — token-primary auth with optional OAuth refresh. Scoped for parent observers and student self-access (mirrors sibling `infinitecampus-mcp`'s parent-portal scope).
 
-The npm package is `instructure-mcp` (vendor-name pattern, mirroring sibling `infinitecampus-mcp`). Tools, env vars, and the user-facing skill stay branded `canvas` / `Canvas` because that's what users say.
+The npm package is `canvas-parent-mcp` because `canvas-mcp` and `canvas-lms-mcp` are both taken on npm. Tools, env vars, and the user-facing skill stay branded `canvas` / `Canvas` because that's what users say.
 
 ## Build & Test
 
@@ -42,7 +42,7 @@ Do NOT manually bump versions or create tags unless the user explicitly asks. Ve
 
 | Surface | Value | Why |
 |---|---|---|
-| npm package / `bin` | `instructure-mcp` | `canvas-mcp` and `canvas-lms-mcp` are taken on npm; vendor-name pattern matches sibling `infinitecampus-mcp` |
+| npm package / `bin` | `canvas-parent-mcp` | `canvas-mcp` and `canvas-lms-mcp` are taken on npm; "parent" parallels sibling `infinitecampus-mcp`'s Campus Parent scope |
 | Tool prefix | `canvas_*` | Users say "Canvas" |
 | Env var prefix | `CANVAS_*` | Users say "Canvas" |
 | Skill name (frontmatter) | `canvas` | Users invoke via `/canvas` |

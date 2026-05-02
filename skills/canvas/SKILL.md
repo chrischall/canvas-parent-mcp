@@ -3,12 +3,12 @@ name: canvas
 description: This skill should be used when the user asks about Canvas LMS (Instructure) data for themselves or any student they observe. Triggers on phrases like "check Canvas", "what's my grade", "Canvas inbox", "what's due", "missing assignments", "Canvas LMS", "Instructure", "course announcements", "syllabus", or any request about courses, assignments, grades, conversations, announcements, planner items, or files.
 ---
 
-# instructure-mcp
+# canvas-parent-mcp
 
-MCP server for Canvas LMS (Instructure) — 18 tools covering profile, observees, courses, assignments, submissions, grades, calendar, planner, announcements, conversations, discussions, and files.
+MCP server for Canvas LMS (Instructure) — 18 tools covering profile, observees, courses, assignments, submissions, grades, calendar, planner, announcements, conversations, discussions, and files. Read-only except for one file-download tool.
 
-- **Source:** [github.com/chrischall/instructure-mcp](https://github.com/chrischall/instructure-mcp)
-- **npm:** [npmjs.com/package/instructure-mcp](https://www.npmjs.com/package/instructure-mcp)
+- **Source:** [github.com/chrischall/canvas-parent-mcp](https://github.com/chrischall/canvas-parent-mcp)
+- **npm:** [npmjs.com/package/canvas-parent-mcp](https://www.npmjs.com/package/canvas-parent-mcp)
 
 ## Setup
 
@@ -23,7 +23,7 @@ Add to `.mcp.json` in your project or `~/.claude/mcp.json`:
   "mcpServers": {
     "canvas": {
       "command": "npx",
-      "args": ["-y", "instructure-mcp"],
+      "args": ["-y", "canvas-parent-mcp"],
       "env": {
         "CANVAS_BASE_URL": "https://cms.instructure.com",
         "CANVAS_TOKEN": "your-personal-access-token",
@@ -41,7 +41,7 @@ For OAuth instead of a token:
   "mcpServers": {
     "canvas": {
       "command": "npx",
-      "args": ["-y", "instructure-mcp"],
+      "args": ["-y", "canvas-parent-mcp"],
       "env": {
         "CANVAS_BASE_URL": "https://cms.instructure.com",
         "CANVAS_CLIENT_ID": "...",
@@ -58,13 +58,13 @@ For OAuth instead of a token:
 #### 1. Install
 
 ```bash
-npm install -g instructure-mcp
+npm install -g canvas-parent-mcp
 ```
 
 Or from source:
 ```bash
-git clone https://github.com/chrischall/instructure-mcp
-cd instructure-mcp
+git clone https://github.com/chrischall/canvas-parent-mcp
+cd canvas-parent-mcp
 npm install && npm run build
 ```
 
@@ -79,7 +79,7 @@ cp .env.example .env
 
 ```bash
 mcporter config add canvas \
-  --command "instructure-mcp" \
+  --command "canvas-parent-mcp" \
   --env "CANVAS_BASE_URL=https://cms.instructure.com" \
   --env "CANVAS_TOKEN=your-personal-access-token" \
   --env "CANVAS_NAME=CMS" \

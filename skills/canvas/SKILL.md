@@ -12,7 +12,7 @@ MCP server for Canvas LMS (Instructure) — 18 tools covering profile, observees
 
 ## Setup
 
-Two auth modes — set one. Personal access token is recommended.
+Pick one auth mode. **Username/password is recommended** — most schools have disabled personal-access-token creation.
 
 ### Option A — Claude Code (direct MCP, no mcporter)
 
@@ -26,7 +26,8 @@ Add to `.mcp.json` in your project or `~/.claude/mcp.json`:
       "args": ["-y", "canvas-parent-mcp"],
       "env": {
         "CANVAS_BASE_URL": "https://cms.instructure.com",
-        "CANVAS_TOKEN": "your-personal-access-token",
+        "CANVAS_USERNAME": "me@example.com",
+        "CANVAS_PASSWORD": "your-canvas-password",
         "CANVAS_NAME": "CMS"
       }
     }
@@ -34,40 +35,27 @@ Add to `.mcp.json` in your project or `~/.claude/mcp.json`:
 }
 ```
 
-When admins have disabled token creation, use username/password (auto-login + auto-renew):
+The server logs in lazily on the first request and silently re-mints cookies on 401, so you never have to re-bootstrap. Direct Canvas accounts only — won't work with SAML/Google/Microsoft SSO or 2FA.
+
+#### Advanced alternatives
+
+If your admin still allows tokens, swap `CANVAS_USERNAME`/`CANVAS_PASSWORD` for `CANVAS_TOKEN`:
 
 ```json
-{
-  "mcpServers": {
-    "canvas": {
-      "command": "npx",
-      "args": ["-y", "canvas-parent-mcp"],
-      "env": {
-        "CANVAS_BASE_URL": "https://cms.instructure.com",
-        "CANVAS_USERNAME": "me@example.com",
-        "CANVAS_PASSWORD": "your-canvas-password"
-      }
-    }
-  }
+"env": {
+  "CANVAS_BASE_URL": "https://cms.instructure.com",
+  "CANVAS_TOKEN": "your-personal-access-token"
 }
 ```
 
-Direct Canvas accounts only — won't work with SAML/Google/Microsoft SSO or 2FA. Or, for OAuth instead of a token:
+If your account uses SSO (so username/password won't work), mint OAuth credentials by reusing the Canvas mobile-app QR-login flow (`canvas-parent-mcp-qr-login`), then:
 
 ```json
-{
-  "mcpServers": {
-    "canvas": {
-      "command": "npx",
-      "args": ["-y", "canvas-parent-mcp"],
-      "env": {
-        "CANVAS_BASE_URL": "https://cms.instructure.com",
-        "CANVAS_CLIENT_ID": "...",
-        "CANVAS_CLIENT_SECRET": "...",
-        "CANVAS_REFRESH_TOKEN": "..."
-      }
-    }
-  }
+"env": {
+  "CANVAS_BASE_URL": "https://cms.instructure.com",
+  "CANVAS_CLIENT_ID": "...",
+  "CANVAS_CLIENT_SECRET": "...",
+  "CANVAS_REFRESH_TOKEN": "..."
 }
 ```
 
@@ -99,10 +87,13 @@ cp .env.example .env
 mcporter config add canvas \
   --command "canvas-parent-mcp" \
   --env "CANVAS_BASE_URL=https://cms.instructure.com" \
-  --env "CANVAS_TOKEN=your-personal-access-token" \
+  --env "CANVAS_USERNAME=me@example.com" \
+  --env "CANVAS_PASSWORD=your-canvas-password" \
   --env "CANVAS_NAME=CMS" \
   --config ~/.mcporter/mcporter.json
 ```
+
+(Or substitute `CANVAS_TOKEN` / OAuth env vars per the alternatives above.)
 
 #### 4. Verify
 
@@ -207,5 +198,5 @@ Most tools accept an optional `observeeId` (defaults to `self`) — set it to a 
 ## Caution
 
 - `canvas_download_file` writes to disk at `destinationPath` — confirm the path with the user; pass `overwrite:true` to replace.
-- Personal access tokens grant the same access as the user account they were issued for. Treat them as secrets.
+- All auth credentials (password, token, refresh token, cookie) grant the same access as the user account. Treat them as secrets — never commit `.env`.
 - Endpoints that return paginated results follow Canvas's RFC 5988 `Link` headers automatically up to 50 pages (5,000 items at the default `per_page=100`).

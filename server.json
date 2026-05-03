@@ -23,48 +23,48 @@
           "format": "string"
         },
         {
-          "name": "CANVAS_TOKEN",
-          "description": "Canvas personal access token (pick ONE auth mode: this, USERNAME+PASSWORD, COOKIE, or OAuth triple)",
-          "isRequired": false,
-          "format": "string",
-          "isSecret": true
-        },
-        {
           "name": "CANVAS_USERNAME",
-          "description": "Canvas login username/email — pair with CANVAS_PASSWORD for auto-login (no SSO/2FA)",
+          "description": "Canvas login username/email (recommended) — pair with CANVAS_PASSWORD for auto-login. No SSO/2FA.",
           "isRequired": false,
           "format": "string"
         },
         {
           "name": "CANVAS_PASSWORD",
-          "description": "Canvas password for auto-login — required iff CANVAS_USERNAME is set",
+          "description": "Canvas password (recommended) — required iff CANVAS_USERNAME is set",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "CANVAS_TOKEN",
+          "description": "Canvas personal access token (advanced) — most schools have disabled token creation",
           "isRequired": false,
           "format": "string",
           "isSecret": true
         },
         {
           "name": "CANVAS_COOKIE",
-          "description": "Pre-minted Canvas session cookie jar (from canvas-parent-mcp-login or qr-login CLI)",
+          "description": "Pre-minted Canvas session cookie jar (advanced) — from canvas-parent-mcp-login or qr-login CLI",
           "isRequired": false,
           "format": "string",
           "isSecret": true
         },
         {
           "name": "CANVAS_CLIENT_ID",
-          "description": "Canvas OAuth client ID (required if not using CANVAS_TOKEN)",
+          "description": "Canvas OAuth client ID (advanced — for SSO accounts that can't use username/password)",
           "isRequired": false,
           "format": "string"
         },
         {
           "name": "CANVAS_CLIENT_SECRET",
-          "description": "Canvas OAuth client secret (required if not using CANVAS_TOKEN)",
+          "description": "Canvas OAuth client secret (advanced)",
           "isRequired": false,
           "format": "string",
           "isSecret": true
         },
         {
           "name": "CANVAS_REFRESH_TOKEN",
-          "description": "Canvas OAuth refresh token (required if not using CANVAS_TOKEN)",
+          "description": "Canvas OAuth refresh token (advanced) — bootstrap via canvas-parent-mcp-qr-login",
           "isRequired": false,
           "format": "string",
           "isSecret": true

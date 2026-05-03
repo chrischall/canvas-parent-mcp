@@ -24,7 +24,8 @@ Add to `.mcp.json` in your project or `~/.claude/mcp.json`:
       "args": ["-y", "canvas-parent-mcp"],
       "env": {
         "CANVAS_BASE_URL": "https://cms.instructure.com",
-        "CANVAS_TOKEN": "your-personal-access-token"
+        "CANVAS_USERNAME": "me@example.com",
+        "CANVAS_PASSWORD": "your-canvas-password"
       }
     }
   }
@@ -41,15 +42,13 @@ npm install && npm run build
 
 ## Authentication
 
-Pick one mode:
+**Username/password (recommended).** Set `CANVAS_USERNAME` + `CANVAS_PASSWORD`. The server logs in lazily on the first request and silently re-mints session cookies on 401 — no manual rotation. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA.
 
-**Personal access token (recommended).** Generate from Canvas: Account → Settings → "+ New Access Token". Set `CANVAS_TOKEN`.
+### Advanced alternatives
 
-**Username/password (when admins disable token creation).** Set `CANVAS_USERNAME` + `CANVAS_PASSWORD`. The server logs in lazily and silently re-mints session cookies on 401. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA.
-
-**Session cookie (precomputed).** Set `CANVAS_COOKIE` from the `canvas-parent-mcp-login` or `canvas-parent-mcp-qr-login` CLIs. Re-run when the cookie expires (~2 weeks).
-
-**OAuth (advanced).** Set `CANVAS_CLIENT_ID`, `CANVAS_CLIENT_SECRET`, and `CANVAS_REFRESH_TOKEN` — the server will refresh access tokens automatically.
+- **Personal access token** — set `CANVAS_TOKEN`. Generate via Canvas → Account → Settings → "+ New Access Token". Most institutions have disabled this for non-admins.
+- **Session cookie** — set `CANVAS_COOKIE` from the `canvas-parent-mcp-login` CLI. Re-run when the cookie expires (~2 weeks). Essentially username/password without auto-renewal.
+- **OAuth** — set `CANVAS_CLIENT_ID`, `CANVAS_CLIENT_SECRET`, `CANVAS_REFRESH_TOKEN`. Useful when SSO blocks the username/password flow; bootstrap with `canvas-parent-mcp-qr-login` from a Canvas web QR.
 
 Precedence when multiple are set: `CANVAS_TOKEN` > session env vars > OAuth.
 

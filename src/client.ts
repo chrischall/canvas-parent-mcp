@@ -38,7 +38,7 @@ export class CanvasClient {
   }
 
   async request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
-    const res = await this.doRawRequest(path, opts, false);
+    const res = await this.doRawRequest(path, opts);
     const text = await res.text();
     if (opts.responseType === 'text') return text as T;
     return (parseJsonBody<T>(text) ?? null) as T;
@@ -50,7 +50,7 @@ export class CanvasClient {
     let url = injectPerPage(path, perPage);
     const out: T[] = [];
     for (let page = 0; page < maxPages; page++) {
-      const res = await this.doRawRequest(url, opts, false);
+      const res = await this.doRawRequest(url, opts);
       const text = await res.text();
       const parsed = parseJsonBody<T[]>(text) ?? [];
       for (const item of parsed) out.push(item);
@@ -74,11 +74,8 @@ export class CanvasClient {
     const parent = dirname(destinationPath);
     try { await stat(parent); } catch { throw new ParentDirectoryMissingError(parent); }
 
-    await this.ensureAuth();
     const url = /^https?:\/\//i.test(path) ? path : `${this.account.baseUrl}${path}`;
-    const res = await fetch(url, {
-      headers: this.getAuthHeaders(),
-    });
+    const res = await this.authedFetch(url, {});
     if (res.status === 404) throw new Error(`Canvas download 404 for ${path}`);
     if (!res.ok) throw new Error(`Canvas download ${res.status} for ${path}`);
 
@@ -91,33 +88,46 @@ export class CanvasClient {
     };
   }
 
-  private async doRawRequest(path: string, opts: RequestOpts, isRetry: boolean): Promise<Response> {
-    await this.ensureAuth();
+  private async doRawRequest(path: string, opts: RequestOpts): Promise<Response> {
     const url = /^https?:\/\//i.test(path) ? path : `${this.account.baseUrl}${path}`;
     const accept = opts.responseType === 'text'
       ? 'text/html, text/plain, */*'
       : 'application/json+canvas-string-ids, application/json';
-    const res = await fetch(url, {
+    const res = await this.authedFetch(url, {
       method: opts.method ?? 'GET',
-      headers: {
-        ...this.getAuthHeaders(),
-        Accept: accept,
-        ...(opts.headers ?? {}),
-      },
+      headers: { Accept: accept, ...(opts.headers ?? {}) },
       body: opts.body,
     });
 
+    if (res.status === 404) throw new Error(`Canvas 404 ${path}`);
+    if (res.status >= 500) throw new CanvasUnreachableError(res.status);
+    if (!res.ok) throw new Error(`Canvas ${res.status} ${res.statusText} for ${path}`);
+    return res;
+  }
+
+  /**
+   * Fetch with auth headers attached and transparent 401 retry. Token mode has
+   * no refresh path so a 401 throws immediately; oauth and session both attempt
+   * one re-auth before giving up. Used by both API requests and file downloads.
+   */
+  private async authedFetch(
+    url: string,
+    init: RequestInit,
+    isRetry = false,
+  ): Promise<Response> {
+    await this.ensureAuth();
+    const res = await fetch(url, {
+      ...init,
+      headers: { ...this.getAuthHeaders(), ...(init.headers as Record<string, string> | undefined) },
+    });
+
     if (res.status === 401) {
-      // Token mode has no refresh path; oauth and session both do.
       if (isRetry || this.account.mode === 'token') {
         throw new TokenExpiredError(this.account.mode);
       }
       await this.ensureAuth({ force: true });
-      return this.doRawRequest(path, opts, true);
+      return this.authedFetch(url, init, true);
     }
-    if (res.status === 404) throw new Error(`Canvas 404 ${path}`);
-    if (res.status >= 500) throw new CanvasUnreachableError(res.status);
-    if (!res.ok) throw new Error(`Canvas ${res.status} ${res.statusText} for ${path}`);
     return res;
   }
 

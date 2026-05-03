@@ -5,9 +5,10 @@
 // page to capture the CSRF cookie + authenticity_token, then POST credentials
 // and harvest the resulting session cookies (canvas_session, pseudonym_credentials).
 //
-// The cookie jar is what callers persist as CANVAS_COOKIE. CanvasClient sends
-// it on every API request in place of an OAuth bearer token. pseudonym_credentials
-// is the "remember me" cookie and is the one with a meaningful expiry (~14 days);
+// The returned cookie jar is held in memory by CanvasClient.sessionCookie and
+// sent on every API request in place of an OAuth bearer token; on a 401 the
+// client re-invokes sessionLogin to mint a fresh jar. pseudonym_credentials
+// is the "remember me" cookie with a meaningful expiry (~14 days);
 // canvas_session piggybacks on it.
 
 const USER_AGENT =

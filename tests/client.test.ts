@@ -233,6 +233,86 @@ describe('CanvasClient.download (session mode)', () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it('re-mints session cookie on 401 and retries the download successfully', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-dl-'));
+    try {
+      const sessionLoginMock = vi
+        .fn()
+        .mockResolvedValueOnce({ cookie: 'stale=1' })
+        .mockResolvedValueOnce({ cookie: 'fresh=2' });
+      const fetchMock = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response('', { status: 401 }))
+        .mockResolvedValueOnce(new Response(new Uint8Array([7, 8, 9]), { status: 200 }));
+      const c = new CanvasClient(sessionAccount(), { sessionLogin: sessionLoginMock });
+      const meta = await c.download('https://cms.instructure.com/files/1/download', join(dir, 'r.pdf'));
+      expect(meta.bytes).toBe(3);
+      expect(sessionLoginMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const retryHeaders = (fetchMock.mock.calls[1][1] as RequestInit).headers as Record<string, string>;
+      expect(retryHeaders.Cookie).toBe('fresh=2');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('throws TokenExpiredError on a second 401 after re-mint', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-dl-'));
+    try {
+      const sessionLoginMock = vi
+        .fn()
+        .mockResolvedValueOnce({ cookie: 'stale=1' })
+        .mockResolvedValueOnce({ cookie: 'fresh=2' });
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response('', { status: 401 }))
+        .mockResolvedValueOnce(new Response('', { status: 401 }));
+      const c = new CanvasClient(sessionAccount(), { sessionLogin: sessionLoginMock });
+      await expect(
+        c.download('https://cms.instructure.com/files/1/download', join(dir, 'r.pdf')),
+      ).rejects.toBeInstanceOf(TokenExpiredError);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('throws TokenExpiredError immediately on 401 in token mode (no retry)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-dl-'));
+    try {
+      const fetchMock = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response('', { status: 401 }));
+      const c = new CanvasClient(tokenAccount);
+      await expect(
+        c.download('https://cms.instructure.com/files/1/download', join(dir, 'r.pdf')),
+      ).rejects.toBeInstanceOf(TokenExpiredError);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('CanvasClient.download (oauth mode)', () => {
+  it('refreshes access token on 401 and retries the download successfully', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-dl-'));
+    try {
+      const fetchMock = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(jsonRes({ access_token: 'at1', expires_in: 3600 }))
+        .mockResolvedValueOnce(new Response('', { status: 401 }))
+        .mockResolvedValueOnce(jsonRes({ access_token: 'at2', expires_in: 3600 }))
+        .mockResolvedValueOnce(new Response(new Uint8Array([1, 2]), { status: 200 }));
+      const c = new CanvasClient(oauthAccount());
+      const meta = await c.download('https://cms.instructure.com/files/1/download', join(dir, 'r.pdf'));
+      expect(meta.bytes).toBe(2);
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+      const retryHeaders = (fetchMock.mock.calls[3][1] as RequestInit).headers as Record<string, string>;
+      expect(retryHeaders.Authorization).toBe('Bearer at2');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('CanvasClient.request (oauth mode)', () => {

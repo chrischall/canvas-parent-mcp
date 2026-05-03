@@ -119,6 +119,31 @@ describe('loadAccount (precedence)', () => {
     expect(acct.mode).toBe('session');
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('OAuth'));
   });
+
+  it('warns about partial OAuth env vars when CANVAS_TOKEN takes precedence', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const acct = loadAccount({ ...tokenEnv, CANVAS_CLIENT_ID: 'cid' });
+    expect(acct.mode).toBe('token');
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('partial OAuth'));
+  });
+
+  it('warns about partial username/password (only CANVAS_USERNAME) when CANVAS_TOKEN takes precedence', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const acct = loadAccount({ ...tokenEnv, CANVAS_USERNAME: 'me@example.com' });
+    expect(acct.mode).toBe('token');
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/partial username\/password.*CANVAS_USERNAME/),
+    );
+  });
+
+  it('warns about partial username/password (only CANVAS_PASSWORD) when CANVAS_TOKEN takes precedence', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const acct = loadAccount({ ...tokenEnv, CANVAS_PASSWORD: 'hunter2' });
+    expect(acct.mode).toBe('token');
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/partial username\/password.*CANVAS_PASSWORD/),
+    );
+  });
 });
 
 describe('loadAccount errors', () => {

@@ -53,13 +53,18 @@ export function loadAccount(env: Record<string, string | undefined> = process.en
   const hasPartialUserPass = (!!username) !== (!!password);
 
   if (token) {
-    const others = [hasFullOAuth ? 'OAuth' : null, hasFullUserPass ? 'username/password' : null]
-      .filter(Boolean)
-      .join(' and ');
-    if (others) {
+    const others: string[] = [];
+    if (hasFullOAuth) others.push('OAuth env vars');
+    else if (hasPartialOAuth) others.push('partial OAuth env vars (CANVAS_CLIENT_*/CANVAS_REFRESH_TOKEN)');
+    if (hasFullUserPass) others.push('username/password env vars');
+    else if (hasPartialUserPass) {
+      others.push(`partial username/password (only ${username ? 'CANVAS_USERNAME' : 'CANVAS_PASSWORD'} set)`);
+    }
+    if (others.length > 0) {
+      const joined = others.join(' and ');
       console.error(
-        `[canvas-parent-mcp] CANVAS_TOKEN takes precedence over ${others} — using CANVAS_TOKEN. ` +
-          `Unset CANVAS_TOKEN to use ${others}.`,
+        `[canvas-parent-mcp] CANVAS_TOKEN takes precedence over ${joined} — using CANVAS_TOKEN. ` +
+          `Unset CANVAS_TOKEN to use ${joined}.`,
       );
     }
     return { mode: 'token', name, baseUrl: cleanBaseUrl, token };

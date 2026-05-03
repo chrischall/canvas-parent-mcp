@@ -28,7 +28,7 @@ jobs:
       # Strip always-auth from .npmrc (set by setup-node, deprecated in npm 11)
       - run: sed -i '/always-auth/d' "$NPM_CONFIG_USERCONFIG"
 
-      - run: npm install --no-audit --no-fund
+      - run: npm ci
       - run: npm run build
 
       - name: Extract version

@@ -24,7 +24,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm install --no-audit --no-fund
+      - run: npm ci
 
       - name: Configure git
         run: |

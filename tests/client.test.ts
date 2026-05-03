@@ -16,6 +16,10 @@ const oauthAccount = (): Account => ({
   mode: 'oauth', name: 'cms', baseUrl: 'https://cms.instructure.com',
   clientId: 'cid', clientSecret: 'csec', refreshToken: 'rtok',
 });
+const sessionAccount: Account = {
+  mode: 'session', name: 'cms', baseUrl: 'https://cms.instructure.com',
+  cookie: 'canvas_session=abc; pseudonym_credentials=def',
+};
 
 function jsonRes(body: unknown, init: ResponseInit = {}) {
   const headers = { 'content-type': 'application/json', ...((init.headers as Record<string, string>) ?? {}) };
@@ -30,6 +34,9 @@ describe('TokenExpiredError', () => {
   });
   it('formats an oauth-mode message', () => {
     expect(new TokenExpiredError('oauth').message).toContain('Canvas OAuth refresh failed');
+  });
+  it('formats a session-mode message naming the re-login CLI', () => {
+    expect(new TokenExpiredError('session').message).toMatch(/session cookie|canvas-parent-mcp-login/i);
   });
   it('appends detail in parens', () => {
     expect(new TokenExpiredError('token', 'extra').message).toContain('(extra)');
@@ -118,6 +125,171 @@ describe('CanvasClient.request (token mode)', () => {
     expect((init as RequestInit).method).toBe('POST');
     expect((init as RequestInit).body).toBe('b');
     expect(((init as RequestInit).headers as Record<string, string>)['X-Custom']).toBe('v');
+  });
+});
+
+describe('CanvasClient.request (session mode)', () => {
+  it('sends Cookie header (no Authorization) and returns parsed JSON', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({ id: 7 }));
+    const c = new CanvasClient(sessionAccount);
+    const data = await c.request<{ id: number }>('/api/v1/users/self');
+    expect(data).toEqual({ id: 7 });
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(headers.Cookie).toBe('canvas_session=abc; pseudonym_credentials=def');
+    expect(headers.Authorization).toBeUndefined();
+  });
+
+  it('throws TokenExpiredError on 401 (no retry attempted)', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('', { status: 401 }));
+    const c = new CanvasClient(sessionAccount);
+    await expect(c.request('/api/v1/users/self')).rejects.toBeInstanceOf(TokenExpiredError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('describe() reports session mode', () => {
+    expect(new CanvasClient(sessionAccount).describe().mode).toBe('session');
+  });
+});
+
+describe('CanvasClient.request (session mode + auto-login from username/password)', () => {
+  function makeAccount(overrides: Partial<Account> = {}): Account {
+    return {
+      mode: 'session',
+      name: 'cms',
+      baseUrl: 'https://cms.instructure.com',
+      username: 'me@example.com',
+      password: 'hunter2',
+      ...overrides,
+    } as Account;
+  }
+
+  it('logs in lazily on first request when no cookie is cached', async () => {
+    const sessionLoginMock = vi
+      .fn()
+      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'fresh=1' });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({ id: 9 }));
+    const c = new CanvasClient(makeAccount(), { sessionLogin: sessionLoginMock });
+    expect(await c.request('/api/v1/users/self')).toEqual({ id: 9 });
+    expect(sessionLoginMock).toHaveBeenCalledExactlyOnceWith({
+      baseUrl: 'https://cms.instructure.com',
+      username: 'me@example.com',
+      password: 'hunter2',
+    });
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(headers.Cookie).toBe('fresh=1');
+  });
+
+  it('uses the cached cookie on the second request, not re-logging in', async () => {
+    const sessionLoginMock = vi
+      .fn()
+      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'fresh=1' });
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonRes({ id: 1 }))
+      .mockResolvedValueOnce(jsonRes({ id: 2 }));
+    const c = new CanvasClient(makeAccount(), { sessionLogin: sessionLoginMock });
+    await c.request('/x');
+    await c.request('/y');
+    expect(sessionLoginMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('serializes concurrent first-time logins to a single sessionLogin call', async () => {
+    let resolveLogin: ((r: { baseUrl: string; cookie: string }) => void) | undefined;
+    const loginPromise = new Promise<{ baseUrl: string; cookie: string }>((r) => {
+      resolveLogin = r;
+    });
+    const sessionLoginMock = vi.fn().mockReturnValueOnce(loginPromise);
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve(jsonRes({ ok: true })));
+    const c = new CanvasClient(makeAccount(), { sessionLogin: sessionLoginMock });
+    const p1 = c.request('/x');
+    const p2 = c.request('/y');
+    resolveLogin!({ baseUrl: 'https://cms.instructure.com', cookie: 'k=v' });
+    await Promise.all([p1, p2]);
+    expect(sessionLoginMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-mints on 401 when username/password are present, then retries successfully', async () => {
+    const sessionLoginMock = vi
+      .fn()
+      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'second=1' });
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+      .mockResolvedValueOnce(jsonRes({ ok: true }));
+    const c = new CanvasClient(
+      makeAccount({ cookie: 'stale=1' } as Partial<Account>),
+      { sessionLogin: sessionLoginMock },
+    );
+    expect(await c.request('/x')).toEqual({ ok: true });
+    expect(sessionLoginMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retryHeaders = (fetchMock.mock.calls[1][1] as RequestInit).headers as Record<string, string>;
+    expect(retryHeaders.Cookie).toBe('second=1');
+  });
+
+  it('throws TokenExpiredError on a second 401 even after a successful re-mint', async () => {
+    const sessionLoginMock = vi
+      .fn()
+      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'second=1' });
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+      .mockResolvedValueOnce(new Response('', { status: 401 }));
+    const c = new CanvasClient(
+      makeAccount({ cookie: 'stale=1' } as Partial<Account>),
+      { sessionLogin: sessionLoginMock },
+    );
+    await expect(c.request('/x')).rejects.toBeInstanceOf(TokenExpiredError);
+  });
+
+  it('propagates the underlying SessionLoginError when sessionLogin throws (e.g. wrong password)', async () => {
+    const sessionLoginMock = vi.fn().mockRejectedValueOnce(new Error('bad password'));
+    const c = new CanvasClient(makeAccount(), { sessionLogin: sessionLoginMock });
+    await expect(c.request('/x')).rejects.toThrow(/bad password/);
+  });
+
+  it('throws TokenExpiredError when session mode has neither cookie nor username/password (defensive)', async () => {
+    const sessionLoginMock = vi.fn();
+    const c = new CanvasClient(
+      { mode: 'session', name: 'cms', baseUrl: 'https://cms.instructure.com' },
+      { sessionLogin: sessionLoginMock },
+    );
+    await expect(c.request('/x')).rejects.toBeInstanceOf(TokenExpiredError);
+    expect(sessionLoginMock).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-login when only a cookie is configured (no username/password)', async () => {
+    const sessionLoginMock = vi.fn();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 401 }));
+    const c = new CanvasClient(
+      {
+        mode: 'session',
+        name: 'cms',
+        baseUrl: 'https://cms.instructure.com',
+        cookie: 'only=cookie',
+      },
+      { sessionLogin: sessionLoginMock },
+    );
+    await expect(c.request('/x')).rejects.toBeInstanceOf(TokenExpiredError);
+    expect(sessionLoginMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('CanvasClient.download (session mode)', () => {
+  it('sends Cookie header on the download request', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-dl-'));
+    try {
+      const fetchMock = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));
+      const c = new CanvasClient(sessionAccount);
+      await c.download('https://cms.instructure.com/files/1/download', join(dir, 'r.pdf'));
+      const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+      expect(headers.Cookie).toBe('canvas_session=abc; pseudonym_credentials=def');
+      expect(headers.Authorization).toBeUndefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

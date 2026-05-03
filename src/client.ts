@@ -1,6 +1,9 @@
 import { writeFile, stat } from 'fs/promises';
 import { dirname } from 'path';
-import type { Account, OAuthAccount } from './config.js';
+import type { Account, OAuthAccount, SessionAccount } from './config.js';
+import { sessionLogin as defaultSessionLogin } from './session-login.js';
+
+export type SessionLoginFn = typeof defaultSessionLogin;
 
 export interface RequestOpts {
   method?: 'GET' | 'POST';
@@ -21,13 +24,15 @@ export class CanvasClient {
   private account: Account;
   private refreshInFlight: Promise<void> | null = null;
   private accessTokenExpiresAt = 0;
+  private sessionLoginFn: SessionLoginFn;
 
-  constructor(account: Account) {
+  constructor(account: Account, opts: { sessionLogin?: SessionLoginFn } = {}) {
     this.account = account;
+    this.sessionLoginFn = opts.sessionLogin ?? defaultSessionLogin;
   }
 
   /** Account metadata (no secrets) — useful for diagnostics. */
-  describe(): { name: string; baseUrl: string; mode: 'token' | 'oauth' } {
+  describe(): { name: string; baseUrl: string; mode: 'token' | 'oauth' | 'session' } {
     return { name: this.account.name, baseUrl: this.account.baseUrl, mode: this.account.mode };
   }
 
@@ -68,10 +73,10 @@ export class CanvasClient {
     const parent = dirname(destinationPath);
     try { await stat(parent); } catch { throw new ParentDirectoryMissingError(parent); }
 
-    await this.ensureToken();
+    await this.ensureAuth();
     const url = /^https?:\/\//i.test(path) ? path : `${this.account.baseUrl}${path}`;
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${this.getAccessToken()}` },
+      headers: this.getAuthHeaders(),
     });
     if (res.status === 404) throw new Error(`Canvas download 404 for ${path}`);
     if (!res.ok) throw new Error(`Canvas download ${res.status} for ${path}`);
@@ -86,7 +91,7 @@ export class CanvasClient {
   }
 
   private async doRawRequest(path: string, opts: RequestOpts, isRetry: boolean): Promise<Response> {
-    await this.ensureToken();
+    await this.ensureAuth();
     const url = /^https?:\/\//i.test(path) ? path : `${this.account.baseUrl}${path}`;
     const accept = opts.responseType === 'text'
       ? 'text/html, text/plain, */*'
@@ -94,7 +99,7 @@ export class CanvasClient {
     const res = await fetch(url, {
       method: opts.method ?? 'GET',
       headers: {
-        Authorization: `Bearer ${this.getAccessToken()}`,
+        ...this.getAuthHeaders(),
         Accept: accept,
         ...(opts.headers ?? {}),
       },
@@ -102,10 +107,10 @@ export class CanvasClient {
     });
 
     if (res.status === 401) {
-      if (isRetry || this.account.mode === 'token') {
+      if (isRetry || !this.canRefreshAuth()) {
         throw new TokenExpiredError(this.account.mode);
       }
-      await this.ensureToken({ force: true });
+      await this.ensureAuth({ force: true });
       return this.doRawRequest(path, opts, true);
     }
     if (res.status === 404) throw new Error(`Canvas 404 ${path}`);
@@ -114,20 +119,51 @@ export class CanvasClient {
     return res;
   }
 
-  private getAccessToken(): string {
-    if (this.account.mode === 'token') return this.account.token;
-    // OAuth mode: callers always invoke ensureToken() first, which guarantees accessToken is set.
-    return this.account.accessToken!;
+  /** Whether this account can mint or refresh credentials in response to a 401. */
+  private canRefreshAuth(): boolean {
+    const acct = this.account;
+    if (acct.mode === 'oauth') return true;
+    if (acct.mode === 'session') return !!acct.username && !!acct.password;
+    return false;
   }
 
-  private async ensureToken(opts: { force?: boolean } = {}): Promise<void> {
+  private getAuthHeaders(): Record<string, string> {
     const acct = this.account;
-    // Token mode: nothing to refresh. doRawRequest throws on 401 before reaching here with force=true.
+    // For oauth/session: callers always invoke ensureAuth() first, which guarantees the credential is set.
+    if (acct.mode === 'token') return { Authorization: `Bearer ${acct.token}` };
+    if (acct.mode === 'session') return { Cookie: acct.cookie! };
+    return { Authorization: `Bearer ${acct.accessToken!}` };
+  }
+
+  private async ensureAuth(opts: { force?: boolean } = {}): Promise<void> {
+    const acct = this.account;
     if (acct.mode === 'token') return;
-    if (!opts.force && acct.accessToken && Date.now() < this.accessTokenExpiresAt) return;
+
+    // Decide whether the cached creds are still good.
+    if (!opts.force) {
+      if (acct.mode === 'oauth' && acct.accessToken && Date.now() < this.accessTokenExpiresAt) return;
+      if (acct.mode === 'session' && acct.cookie) return;
+    }
+
+    // Session mode without u/p has nothing to refresh — caller must rotate CANVAS_COOKIE.
+    if (acct.mode === 'session' && !this.canRefreshAuth()) {
+      throw new TokenExpiredError('session');
+    }
+
     if (this.refreshInFlight) { await this.refreshInFlight; return; }
-    this.refreshInFlight = this.refreshAccessToken(acct);
+    this.refreshInFlight = acct.mode === 'oauth'
+      ? this.refreshAccessToken(acct)
+      : this.mintSessionCookie(acct);
     try { await this.refreshInFlight; } finally { this.refreshInFlight = null; }
+  }
+
+  private async mintSessionCookie(acct: SessionAccount): Promise<void> {
+    const result = await this.sessionLoginFn({
+      baseUrl: acct.baseUrl,
+      username: acct.username!,
+      password: acct.password!,
+    });
+    acct.cookie = result.cookie;
   }
 
   private async refreshAccessToken(acct: OAuthAccount): Promise<void> {
@@ -181,10 +217,13 @@ export function parseLinkHeader(header: string): Record<string, string> {
 }
 
 export class TokenExpiredError extends Error {
-  constructor(public mode: 'token' | 'oauth', public detail?: string) {
-    const base = mode === 'token'
-      ? 'Canvas access token rejected (401). Check CANVAS_TOKEN — it may be expired or revoked.'
-      : 'Canvas OAuth refresh failed. Check CANVAS_CLIENT_ID, CANVAS_CLIENT_SECRET, CANVAS_REFRESH_TOKEN.';
+  constructor(public mode: 'token' | 'oauth' | 'session', public detail?: string) {
+    const base =
+      mode === 'token'
+        ? 'Canvas access token rejected (401). Check CANVAS_TOKEN — it may be expired or revoked.'
+        : mode === 'session'
+          ? 'Canvas session cookie rejected (401). Re-run canvas-parent-mcp-login to mint a fresh CANVAS_COOKIE.'
+          : 'Canvas OAuth refresh failed. Check CANVAS_CLIENT_ID, CANVAS_CLIENT_SECRET, CANVAS_REFRESH_TOKEN.';
     super(detail ? `${base} (${detail})` : base);
     this.name = 'TokenExpiredError';
   }

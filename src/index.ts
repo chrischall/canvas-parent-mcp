@@ -31,7 +31,7 @@ import { registerFileTools } from './tools/files.js';
 
 const account = loadAccount();
 const client = new CanvasClient(account);
-const server = new McpServer({ name: 'canvas', version: '1.0.0' });
+const server = new McpServer({ name: 'canvas', version: '1.0.1' });
 
 registerProfileTools(server, client);
 registerObserveeTools(server, client);

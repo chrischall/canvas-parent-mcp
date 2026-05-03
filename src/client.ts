@@ -122,10 +122,8 @@ export class CanvasClient {
 
   private async ensureToken(opts: { force?: boolean } = {}): Promise<void> {
     const acct = this.account;
-    if (acct.mode === 'token') {
-      if (opts.force) throw new TokenExpiredError('token');
-      return;
-    }
+    // Token mode: nothing to refresh. doRawRequest throws on 401 before reaching here with force=true.
+    if (acct.mode === 'token') return;
     if (!opts.force && acct.accessToken && Date.now() < this.accessTokenExpiresAt) return;
     if (this.refreshInFlight) { await this.refreshInFlight; return; }
     this.refreshInFlight = this.refreshAccessToken(acct);

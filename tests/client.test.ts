@@ -256,9 +256,10 @@ describe('CanvasClient.requestPaginated', () => {
   });
 
   it('stops at maxPages even if rel="next" persists', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonRes([1], {
+    // Factory — each fetch call returns a fresh Response (bodies aren't replayable).
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve(jsonRes([1], {
       headers: { link: '<https://cms.instructure.com/api/v1/x?page=2>; rel="next"' },
-    }));
+    })));
     const c = new CanvasClient(tokenAccount);
     const data = await c.requestPaginated<number>('/api/v1/x', { maxPages: 2 });
     expect(data.length).toBe(2);

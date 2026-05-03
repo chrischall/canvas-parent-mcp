@@ -34,7 +34,25 @@ Add to `.mcp.json` in your project or `~/.claude/mcp.json`:
 }
 ```
 
-For OAuth instead of a token:
+When admins have disabled token creation, use username/password (auto-login + auto-renew):
+
+```json
+{
+  "mcpServers": {
+    "canvas": {
+      "command": "npx",
+      "args": ["-y", "canvas-parent-mcp"],
+      "env": {
+        "CANVAS_BASE_URL": "https://cms.instructure.com",
+        "CANVAS_USERNAME": "me@example.com",
+        "CANVAS_PASSWORD": "your-canvas-password"
+      }
+    }
+  }
+}
+```
+
+Direct Canvas accounts only — won't work with SAML/Google/Microsoft SSO or 2FA. Or, for OAuth instead of a token:
 
 ```json
 {
@@ -72,7 +90,7 @@ npm install && npm run build
 
 ```bash
 cp .env.example .env
-# Edit .env: set CANVAS_BASE_URL and CANVAS_TOKEN (or the OAuth triple).
+# Edit .env: set CANVAS_BASE_URL plus one of CANVAS_TOKEN, CANVAS_USERNAME+CANVAS_PASSWORD, CANVAS_COOKIE, or the OAuth triple.
 ```
 
 #### 3. Register with mcporter

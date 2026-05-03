@@ -24,7 +24,27 @@
         },
         {
           "name": "CANVAS_TOKEN",
-          "description": "Canvas personal access token (set this OR all three OAuth vars)",
+          "description": "Canvas personal access token (pick ONE auth mode: this, USERNAME+PASSWORD, COOKIE, or OAuth triple)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "CANVAS_USERNAME",
+          "description": "Canvas login username/email — pair with CANVAS_PASSWORD for auto-login (no SSO/2FA)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "CANVAS_PASSWORD",
+          "description": "Canvas password for auto-login — required iff CANVAS_USERNAME is set",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "CANVAS_COOKIE",
+          "description": "Pre-minted Canvas session cookie jar (from canvas-parent-mcp-login or qr-login CLI)",
           "isRequired": false,
           "format": "string",
           "isSecret": true

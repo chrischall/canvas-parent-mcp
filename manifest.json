@@ -17,6 +17,9 @@
       "env": {
         "CANVAS_BASE_URL": "${user_config.canvas_base_url}",
         "CANVAS_TOKEN": "${user_config.canvas_token}",
+        "CANVAS_USERNAME": "${user_config.canvas_username}",
+        "CANVAS_PASSWORD": "${user_config.canvas_password}",
+        "CANVAS_COOKIE": "${user_config.canvas_cookie}",
         "CANVAS_CLIENT_ID": "${user_config.canvas_client_id}",
         "CANVAS_CLIENT_SECRET": "${user_config.canvas_client_secret}",
         "CANVAS_REFRESH_TOKEN": "${user_config.canvas_refresh_token}",
@@ -34,27 +37,47 @@
     "canvas_token": {
       "type": "string",
       "title": "Personal access token (recommended)",
-      "description": "Canvas personal access token. Generate via Account → Settings → '+ New Access Token'. Set this OR all three of canvas_client_id + canvas_client_secret + canvas_refresh_token.",
+      "description": "Canvas personal access token. Generate via Account → Settings → '+ New Access Token'. Pick ONE auth mode: this token, OR username+password, OR cookie, OR the OAuth triple.",
+      "required": false,
+      "sensitive": true
+    },
+    "canvas_username": {
+      "type": "string",
+      "title": "Username / login email (auto-login)",
+      "description": "Canvas username (or login email) for the /login/canvas form. Set together with canvas_password when your admin has disabled token creation; the MCP auto-logs-in on first request and re-mints cookies on 401. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA.",
+      "required": false
+    },
+    "canvas_password": {
+      "type": "string",
+      "title": "Password (auto-login)",
+      "description": "Canvas password. Required only when using username/password auto-login. Stored locally in the bundle config — keep it private.",
+      "required": false,
+      "sensitive": true
+    },
+    "canvas_cookie": {
+      "type": "string",
+      "title": "Session cookie jar (precomputed)",
+      "description": "Pre-minted CANVAS_COOKIE value (from canvas-parent-mcp-login or canvas-parent-mcp-qr-login). Re-run the CLI when the cookie expires (~2 weeks). Prefer username+password if you want hands-off renewal.",
       "required": false,
       "sensitive": true
     },
     "canvas_client_id": {
       "type": "string",
       "title": "OAuth client ID (optional)",
-      "description": "Canvas Developer Key client ID. Required only if not using a personal access token.",
+      "description": "Canvas Developer Key client ID. Required only if you're using the OAuth refresh-token mode.",
       "required": false
     },
     "canvas_client_secret": {
       "type": "string",
       "title": "OAuth client secret (optional)",
-      "description": "Canvas Developer Key client secret. Required only if not using a personal access token.",
+      "description": "Canvas Developer Key client secret. Required only if you're using the OAuth refresh-token mode.",
       "required": false,
       "sensitive": true
     },
     "canvas_refresh_token": {
       "type": "string",
       "title": "OAuth refresh token (optional)",
-      "description": "Canvas refresh token from a one-time auth-code flow. Required only if not using a personal access token.",
+      "description": "Canvas refresh token from a one-time auth-code flow (or canvas-parent-mcp-qr-login). Required only if using OAuth mode.",
       "required": false,
       "sensitive": true
     },

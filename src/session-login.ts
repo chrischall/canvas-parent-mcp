@@ -63,7 +63,6 @@ function collectSetCookies(headers: Headers): Cookie[] {
 }
 
 export interface SessionLoginResult {
-  baseUrl: string;
   cookie: string;
 }
 
@@ -149,8 +148,5 @@ export async function sessionLogin(opts: {
     ['canvas_session', 'pseudonym_credentials', '_csrf_token', 'log_session_id'].includes(c.name),
   );
 
-  return {
-    baseUrl,
-    cookie: serializeCookies(sessionCookies),
-  };
+  return { cookie: serializeCookies(sessionCookies) };
 }

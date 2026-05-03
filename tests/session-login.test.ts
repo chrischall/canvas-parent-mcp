@@ -159,7 +159,6 @@ describe('sessionLogin', () => {
       password: 'hunter2',
     });
 
-    expect(result.baseUrl).toBe('https://cms.instructure.com');
     // jar contains the post-login cookies
     expect(result.cookie).toContain('pseudonym_credentials=pcVal');
     expect(result.cookie).toContain('canvas_session=csVal');
@@ -190,12 +189,11 @@ describe('sessionLogin', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(loginPageRes())
       .mockResolvedValueOnce(postSuccessRes());
-    const result = await sessionLogin({
+    await sessionLogin({
       baseUrl: 'https://cms.instructure.com/',
       username: 'u',
       password: 'p',
     });
-    expect(result.baseUrl).toBe('https://cms.instructure.com');
     expect(fetchMock.mock.calls[0][0]).toBe('https://cms.instructure.com/login/canvas');
   });
 

@@ -136,7 +136,7 @@ describe('CanvasClient.request (session mode)', () => {
   it('logs in lazily on first request, then sends Cookie header (no Authorization)', async () => {
     const sessionLoginMock = vi
       .fn()
-      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'fresh=1' });
+      .mockResolvedValueOnce({ cookie: 'fresh=1' });
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({ id: 9 }));
     const c = new CanvasClient(sessionAccount(), { sessionLogin: sessionLoginMock });
     expect(await c.request('/api/v1/users/self')).toEqual({ id: 9 });
@@ -153,7 +153,7 @@ describe('CanvasClient.request (session mode)', () => {
   it('uses the cached cookie on the second request, not re-logging in', async () => {
     const sessionLoginMock = vi
       .fn()
-      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'fresh=1' });
+      .mockResolvedValueOnce({ cookie: 'fresh=1' });
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(jsonRes({ id: 1 }))
       .mockResolvedValueOnce(jsonRes({ id: 2 }));
@@ -164,8 +164,8 @@ describe('CanvasClient.request (session mode)', () => {
   });
 
   it('serializes concurrent first-time logins to a single sessionLogin call', async () => {
-    let resolveLogin: ((r: { baseUrl: string; cookie: string }) => void) | undefined;
-    const loginPromise = new Promise<{ baseUrl: string; cookie: string }>((r) => {
+    let resolveLogin: ((r: { cookie: string }) => void) | undefined;
+    const loginPromise = new Promise<{ cookie: string }>((r) => {
       resolveLogin = r;
     });
     const sessionLoginMock = vi.fn().mockReturnValueOnce(loginPromise);
@@ -173,7 +173,7 @@ describe('CanvasClient.request (session mode)', () => {
     const c = new CanvasClient(sessionAccount(), { sessionLogin: sessionLoginMock });
     const p1 = c.request('/x');
     const p2 = c.request('/y');
-    resolveLogin!({ baseUrl: 'https://cms.instructure.com', cookie: 'k=v' });
+    resolveLogin!({ cookie: 'k=v' });
     await Promise.all([p1, p2]);
     expect(sessionLoginMock).toHaveBeenCalledTimes(1);
   });
@@ -181,8 +181,8 @@ describe('CanvasClient.request (session mode)', () => {
   it('re-mints on 401, then retries successfully with the fresh cookie', async () => {
     const sessionLoginMock = vi
       .fn()
-      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'first=1' })
-      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'second=1' });
+      .mockResolvedValueOnce({ cookie: 'first=1' })
+      .mockResolvedValueOnce({ cookie: 'second=1' });
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response('', { status: 401 }))
@@ -198,8 +198,8 @@ describe('CanvasClient.request (session mode)', () => {
   it('throws TokenExpiredError on a second 401 even after a successful re-mint', async () => {
     const sessionLoginMock = vi
       .fn()
-      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'first=1' })
-      .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'second=1' });
+      .mockResolvedValueOnce({ cookie: 'first=1' })
+      .mockResolvedValueOnce({ cookie: 'second=1' });
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response('', { status: 401 }))
       .mockResolvedValueOnce(new Response('', { status: 401 }));
@@ -220,7 +220,7 @@ describe('CanvasClient.download (session mode)', () => {
     try {
       const sessionLoginMock = vi
         .fn()
-        .mockResolvedValueOnce({ baseUrl: 'https://cms.instructure.com', cookie: 'fresh=1' });
+        .mockResolvedValueOnce({ cookie: 'fresh=1' });
       const fetchMock = vi
         .spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));

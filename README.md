@@ -47,13 +47,6 @@ CANVAS_PASSWORD=your-canvas-password
 
 The MCP logs in lazily on the first request and silently re-mints cookies on 401, so you never have to re-bootstrap. **Direct Canvas accounts only** — won't work with SAML/Google/Microsoft SSO or 2FA. Treat `.env` like a password file: do not commit it.
 
-**Session cookie (precomputed, no auto-renewal):**
-
-```
-CANVAS_BASE_URL=https://cms.instructure.com
-CANVAS_COOKIE=canvas_session=...; pseudonym_credentials=...; ...
-```
-
 **OAuth (advanced):**
 
 ```
@@ -63,26 +56,9 @@ CANVAS_CLIENT_SECRET=...
 CANVAS_REFRESH_TOKEN=...
 ```
 
-Precedence when multiple are set: `CANVAS_TOKEN` > session env vars (`CANVAS_USERNAME`+`CANVAS_PASSWORD` and/or `CANVAS_COOKIE`) > OAuth. If both `CANVAS_COOKIE` and username/password are set, the cookie is used initially and username/password is the fallback for re-minting on 401.
+Precedence when multiple are set: `CANVAS_TOKEN` > `CANVAS_USERNAME`+`CANVAS_PASSWORD` > OAuth.
 
 See `.env.example`.
-
-### Bootstrapping cookie auth via username/password
-
-When your Canvas admin has disabled personal-access-token creation entirely, the bundled `canvas-parent-mcp-login` CLI logs in via the same `/login/canvas` form your browser uses and prints a `CANVAS_COOKIE` env var:
-
-```
-canvas-parent-mcp-login -b https://cms.instructure.com -u me@example.com >> .env
-# Password: ******    (TTY prompt with no echo)
-```
-
-Or piped (no TTY prompt):
-
-```
-canvas-parent-mcp-login -b https://cms.instructure.com -u me@example.com <<< "$PW" >> .env
-```
-
-The "remember me" cookie (`pseudonym_credentials`) is good for ~2 weeks; re-run the CLI when API calls start returning 401s. **Limitations**: only works for direct Canvas accounts — institutions using SAML/Google/Microsoft SSO or 2FA cannot use this flow, and the CLI exits with a clear error if it detects an SSO redirect or a missing `pseudonym_credentials` cookie. Treat the resulting `CANVAS_COOKIE` value like a password.
 
 ### Bootstrapping OAuth via the mobile QR code
 

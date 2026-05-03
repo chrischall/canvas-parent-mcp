@@ -13,6 +13,12 @@ const oauthEnv = {
   CANVAS_REFRESH_TOKEN: 'rtok',
 };
 
+const userPassEnv = {
+  CANVAS_BASE_URL: 'https://cms.instructure.com',
+  CANVAS_USERNAME: 'me@example.com',
+  CANVAS_PASSWORD: 'hunter2',
+};
+
 afterEach(() => vi.restoreAllMocks());
 
 describe('loadAccount (token mode)', () => {
@@ -59,50 +65,12 @@ describe('loadAccount (oauth mode)', () => {
   });
 });
 
-describe('loadAccount (session/cookie mode)', () => {
-  it('returns a SessionAccount when CANVAS_COOKIE is set', () => {
-    expect(
-      loadAccount({
-        CANVAS_BASE_URL: 'https://cms.instructure.com',
-        CANVAS_COOKIE: 'canvas_session=abc; pseudonym_credentials=def',
-      }),
-    ).toEqual({
+describe('loadAccount (session mode)', () => {
+  it('returns a SessionAccount when CANVAS_USERNAME+CANVAS_PASSWORD are set', () => {
+    expect(loadAccount(userPassEnv)).toEqual({
       mode: 'session',
       name: 'cms.instructure.com',
       baseUrl: 'https://cms.instructure.com',
-      cookie: 'canvas_session=abc; pseudonym_credentials=def',
-    });
-  });
-
-  it('returns a SessionAccount when CANVAS_USERNAME+CANVAS_PASSWORD are set (cookie omitted)', () => {
-    expect(
-      loadAccount({
-        CANVAS_BASE_URL: 'https://cms.instructure.com',
-        CANVAS_USERNAME: 'me@example.com',
-        CANVAS_PASSWORD: 'hunter2',
-      }),
-    ).toEqual({
-      mode: 'session',
-      name: 'cms.instructure.com',
-      baseUrl: 'https://cms.instructure.com',
-      username: 'me@example.com',
-      password: 'hunter2',
-    });
-  });
-
-  it('returns a SessionAccount carrying both cookie and username/password when all three are set', () => {
-    expect(
-      loadAccount({
-        CANVAS_BASE_URL: 'https://cms.instructure.com',
-        CANVAS_COOKIE: 'a=b',
-        CANVAS_USERNAME: 'me@example.com',
-        CANVAS_PASSWORD: 'hunter2',
-      }),
-    ).toEqual({
-      mode: 'session',
-      name: 'cms.instructure.com',
-      baseUrl: 'https://cms.instructure.com',
-      cookie: 'a=b',
       username: 'me@example.com',
       password: 'hunter2',
     });
@@ -138,40 +106,18 @@ describe('loadAccount (precedence)', () => {
     );
   });
 
-  it('prefers token over cookie when both are set; warns to stderr', () => {
+  it('prefers token over username/password when both are set; warns to stderr', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const acct = loadAccount({ ...tokenEnv, CANVAS_COOKIE: 'a=b' });
+    const acct = loadAccount({ ...tokenEnv, ...userPassEnv });
     expect(acct.mode).toBe('token');
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('session env vars'));
-  });
-
-  it('prefers cookie over OAuth when both cookie and full OAuth are set; warns to stderr', () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const acct = loadAccount({ ...oauthEnv, CANVAS_COOKIE: 'a=b' });
-    expect(acct.mode).toBe('session');
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('OAuth'));
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('username/password'));
   });
 
   it('prefers username/password over OAuth when both are set; warns to stderr', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const acct = loadAccount({
-      ...oauthEnv,
-      CANVAS_USERNAME: 'me@example.com',
-      CANVAS_PASSWORD: 'hunter2',
-    });
+    const acct = loadAccount({ ...oauthEnv, ...userPassEnv });
     expect(acct.mode).toBe('session');
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('OAuth'));
-  });
-
-  it('prefers token over username/password when both are set; warns to stderr', () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const acct = loadAccount({
-      ...tokenEnv,
-      CANVAS_USERNAME: 'me@example.com',
-      CANVAS_PASSWORD: 'hunter2',
-    });
-    expect(acct.mode).toBe('token');
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('CANVAS_TOKEN takes precedence'));
   });
 });
 
@@ -188,11 +134,6 @@ describe('loadAccount errors', () => {
   it('throws when no auth mode is configured', () => {
     expect(() => loadAccount({ CANVAS_BASE_URL: 'https://cms.instructure.com' }))
       .toThrow(/Missing Canvas auth config/);
-  });
-
-  it('the no-auth-mode error message lists CANVAS_COOKIE alongside the others', () => {
-    expect(() => loadAccount({ CANVAS_BASE_URL: 'https://cms.instructure.com' }))
-      .toThrow(/CANVAS_COOKIE/);
   });
 
   it('throws on partial OAuth (only client_id) listing the missing pieces', () => {

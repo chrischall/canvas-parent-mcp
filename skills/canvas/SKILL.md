@@ -90,7 +90,7 @@ npm install && npm run build
 
 ```bash
 cp .env.example .env
-# Edit .env: set CANVAS_BASE_URL plus one of CANVAS_TOKEN, CANVAS_USERNAME+CANVAS_PASSWORD, CANVAS_COOKIE, or the OAuth triple.
+# Edit .env: set CANVAS_BASE_URL plus one of CANVAS_TOKEN, CANVAS_USERNAME+CANVAS_PASSWORD, or the OAuth triple.
 ```
 
 #### 3. Register with mcporter

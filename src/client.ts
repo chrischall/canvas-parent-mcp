@@ -24,6 +24,7 @@ export class CanvasClient {
   private account: Account;
   private refreshInFlight: Promise<void> | null = null;
   private accessTokenExpiresAt = 0;
+  private sessionCookie: string | null = null;
   private sessionLoginFn: SessionLoginFn;
 
   constructor(account: Account, opts: { sessionLogin?: SessionLoginFn } = {}) {
@@ -107,7 +108,8 @@ export class CanvasClient {
     });
 
     if (res.status === 401) {
-      if (isRetry || !this.canRefreshAuth()) {
+      // Token mode has no refresh path; oauth and session both do.
+      if (isRetry || this.account.mode === 'token') {
         throw new TokenExpiredError(this.account.mode);
       }
       await this.ensureAuth({ force: true });
@@ -119,19 +121,11 @@ export class CanvasClient {
     return res;
   }
 
-  /** Whether this account can mint or refresh credentials in response to a 401. */
-  private canRefreshAuth(): boolean {
-    const acct = this.account;
-    if (acct.mode === 'oauth') return true;
-    if (acct.mode === 'session') return !!acct.username && !!acct.password;
-    return false;
-  }
-
   private getAuthHeaders(): Record<string, string> {
     const acct = this.account;
-    // For oauth/session: callers always invoke ensureAuth() first, which guarantees the credential is set.
     if (acct.mode === 'token') return { Authorization: `Bearer ${acct.token}` };
-    if (acct.mode === 'session') return { Cookie: acct.cookie! };
+    // For oauth/session: callers always invoke ensureAuth() first, which guarantees the credential is set.
+    if (acct.mode === 'session') return { Cookie: this.sessionCookie! };
     return { Authorization: `Bearer ${acct.accessToken!}` };
   }
 
@@ -139,15 +133,9 @@ export class CanvasClient {
     const acct = this.account;
     if (acct.mode === 'token') return;
 
-    // Decide whether the cached creds are still good.
     if (!opts.force) {
       if (acct.mode === 'oauth' && acct.accessToken && Date.now() < this.accessTokenExpiresAt) return;
-      if (acct.mode === 'session' && acct.cookie) return;
-    }
-
-    // Session mode without u/p has nothing to refresh — caller must rotate CANVAS_COOKIE.
-    if (acct.mode === 'session' && !this.canRefreshAuth()) {
-      throw new TokenExpiredError('session');
+      if (acct.mode === 'session' && this.sessionCookie) return;
     }
 
     if (this.refreshInFlight) { await this.refreshInFlight; return; }
@@ -160,10 +148,10 @@ export class CanvasClient {
   private async mintSessionCookie(acct: SessionAccount): Promise<void> {
     const result = await this.sessionLoginFn({
       baseUrl: acct.baseUrl,
-      username: acct.username!,
-      password: acct.password!,
+      username: acct.username,
+      password: acct.password,
     });
-    acct.cookie = result.cookie;
+    this.sessionCookie = result.cookie;
   }
 
   private async refreshAccessToken(acct: OAuthAccount): Promise<void> {
@@ -222,7 +210,7 @@ export class TokenExpiredError extends Error {
       mode === 'token'
         ? 'Canvas access token rejected (401). Check CANVAS_TOKEN — it may be expired or revoked.'
         : mode === 'session'
-          ? 'Canvas session cookie rejected (401). Re-run canvas-parent-mcp-login to mint a fresh CANVAS_COOKIE.'
+          ? 'Canvas session login failed (401). Check CANVAS_USERNAME / CANVAS_PASSWORD — they may have changed, or the account may be locked or behind SSO.'
           : 'Canvas OAuth refresh failed. Check CANVAS_CLIENT_ID, CANVAS_CLIENT_SECRET, CANVAS_REFRESH_TOKEN.';
     super(detail ? `${base} (${detail})` : base);
     this.name = 'TokenExpiredError';

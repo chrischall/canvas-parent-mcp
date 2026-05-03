@@ -47,11 +47,9 @@ Pick one mode:
 
 **Username/password (when admins disable token creation).** Set `CANVAS_USERNAME` + `CANVAS_PASSWORD`. The server logs in lazily and silently re-mints session cookies on 401. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA.
 
-**Session cookie (precomputed).** Set `CANVAS_COOKIE` from the `canvas-parent-mcp-login` or `canvas-parent-mcp-qr-login` CLIs. Re-run when the cookie expires (~2 weeks).
-
 **OAuth (advanced).** Set `CANVAS_CLIENT_ID`, `CANVAS_CLIENT_SECRET`, and `CANVAS_REFRESH_TOKEN` — the server will refresh access tokens automatically.
 
-Precedence when multiple are set: `CANVAS_TOKEN` > session env vars > OAuth.
+Precedence when multiple are set: `CANVAS_TOKEN` > `CANVAS_USERNAME`+`CANVAS_PASSWORD` > OAuth.
 
 ## Tools (prefix `canvas_`)
 

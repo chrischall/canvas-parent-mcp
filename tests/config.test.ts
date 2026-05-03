@@ -146,6 +146,65 @@ describe('loadAccount (precedence)', () => {
   });
 });
 
+describe('loadAccount (blank/whitespace/placeholder env handling)', () => {
+  it('treats an empty-string CANVAS_TOKEN as unset (does not activate token mode)', () => {
+    const acct = loadAccount({ ...userPassEnv, CANVAS_TOKEN: '' });
+    expect(acct.mode).toBe('session');
+  });
+
+  it('treats a whitespace-only CANVAS_TOKEN as unset', () => {
+    const acct = loadAccount({ ...userPassEnv, CANVAS_TOKEN: '   \t  \n' });
+    expect(acct.mode).toBe('session');
+  });
+
+  it('treats an unsubstituted ${CANVAS_TOKEN} placeholder as unset', () => {
+    // Reproduces the bug where Claude Code / Desktop pass through an
+    // unexpanded shell placeholder from .mcp.json's env block.
+    const acct = loadAccount({ ...userPassEnv, CANVAS_TOKEN: '${CANVAS_TOKEN}' });
+    expect(acct.mode).toBe('session');
+  });
+
+  it('trims surrounding whitespace from CANVAS_TOKEN', () => {
+    const acct = loadAccount({
+      CANVAS_BASE_URL: 'https://cms.instructure.com',
+      CANVAS_TOKEN: '  tok_abc  \n',
+    });
+    expect(acct).toMatchObject({ mode: 'token', token: 'tok_abc' });
+  });
+
+  it('treats blank CANVAS_USERNAME and CANVAS_PASSWORD as unset (no partial-creds error)', () => {
+    // Both blank → as if neither was set, so a token-only or oauth-only env still works.
+    expect(loadAccount({ ...tokenEnv, CANVAS_USERNAME: '   ', CANVAS_PASSWORD: '' }).mode).toBe('token');
+  });
+
+  it('treats blank OAuth env vars as unset (no incomplete-oauth error)', () => {
+    expect(
+      loadAccount({
+        ...tokenEnv,
+        CANVAS_CLIENT_ID: '   ',
+        CANVAS_CLIENT_SECRET: '',
+        CANVAS_REFRESH_TOKEN: '\t\n',
+      }).mode,
+    ).toBe('token');
+  });
+
+  it('treats blank CANVAS_NAME as unset (falls back to host)', () => {
+    expect(loadAccount({ ...tokenEnv, CANVAS_NAME: '   ' }).name).toBe('cms.instructure.com');
+  });
+
+  it('treats blank CANVAS_BASE_URL as missing', () => {
+    expect(() => loadAccount({ CANVAS_BASE_URL: '   ' })).toThrow(
+      /Missing required env var: CANVAS_BASE_URL/,
+    );
+  });
+
+  it('treats placeholder CANVAS_ACCESS_TOKEN as unset on an oauth account', () => {
+    const acct = loadAccount({ ...oauthEnv, CANVAS_ACCESS_TOKEN: '${CANVAS_ACCESS_TOKEN}' });
+    expect(acct.mode).toBe('oauth');
+    if (acct.mode === 'oauth') expect(acct.accessToken).toBeUndefined();
+  });
+});
+
 describe('loadAccount errors', () => {
   it('throws when CANVAS_BASE_URL is missing', () => {
     expect(() => loadAccount({})).toThrow(/Missing required env var: CANVAS_BASE_URL/);

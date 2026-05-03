@@ -25,8 +25,24 @@ export interface SessionAccount {
   password: string;
 }
 
+/**
+ * Read an env var, trim whitespace, and treat the empty string as unset. Also
+ * defensively rejects values that look like an unsubstituted shell placeholder
+ * (e.g. "${CANVAS_TOKEN}") — these can leak through .mcp.json env blocks when
+ * the host (Claude Code / Desktop) doesn't expand them, and would otherwise
+ * be sent to Canvas as a literal token and rejected with a confusing 401.
+ */
+function readVar(env: Record<string, string | undefined>, key: string): string | undefined {
+  const raw = env[key];
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return undefined;
+  if (/^\$\{[^}]*\}$/.test(trimmed)) return undefined;
+  return trimmed;
+}
+
 export function loadAccount(env: Record<string, string | undefined> = process.env): Account {
-  const baseUrl = env.CANVAS_BASE_URL;
+  const baseUrl = readVar(env, 'CANVAS_BASE_URL');
   if (!baseUrl) {
     throw new Error(
       'Missing required env var: CANVAS_BASE_URL. ' +
@@ -37,14 +53,14 @@ export function loadAccount(env: Record<string, string | undefined> = process.en
     throw new Error(`CANVAS_BASE_URL must be an https URL, got: '${baseUrl}'`);
   }
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-  const name = env.CANVAS_NAME || new URL(cleanBaseUrl).host;
+  const name = readVar(env, 'CANVAS_NAME') ?? new URL(cleanBaseUrl).host;
 
-  const token = env.CANVAS_TOKEN;
-  const username = env.CANVAS_USERNAME;
-  const password = env.CANVAS_PASSWORD;
-  const clientId = env.CANVAS_CLIENT_ID;
-  const clientSecret = env.CANVAS_CLIENT_SECRET;
-  const refreshToken = env.CANVAS_REFRESH_TOKEN;
+  const token = readVar(env, 'CANVAS_TOKEN');
+  const username = readVar(env, 'CANVAS_USERNAME');
+  const password = readVar(env, 'CANVAS_PASSWORD');
+  const clientId = readVar(env, 'CANVAS_CLIENT_ID');
+  const clientSecret = readVar(env, 'CANVAS_CLIENT_SECRET');
+  const refreshToken = readVar(env, 'CANVAS_REFRESH_TOKEN');
 
   const oauthSet = [clientId, clientSecret, refreshToken].filter((v) => !!v);
   const hasFullOAuth = oauthSet.length === 3;
@@ -108,7 +124,7 @@ export function loadAccount(env: Record<string, string | undefined> = process.en
       clientId: clientId!,
       clientSecret: clientSecret!,
       refreshToken: refreshToken!,
-      accessToken: env.CANVAS_ACCESS_TOKEN,
+      accessToken: readVar(env, 'CANVAS_ACCESS_TOKEN'),
     };
   }
 

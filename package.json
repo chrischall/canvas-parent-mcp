@@ -27,8 +27,7 @@
   "type": "module",
   "bin": {
     "canvas-parent-mcp": "dist/index.js",
-    "canvas-parent-mcp-qr-login": "dist/qr-login-cli.js",
-    "canvas-parent-mcp-login": "dist/session-login-cli.js"
+    "canvas-parent-mcp-qr-login": "dist/qr-login-cli.js"
   },
   "files": [
     "dist",

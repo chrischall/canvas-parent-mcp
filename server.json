@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.chrischall/canvas-parent-mcp",
-  "description": "Canvas LMS (Instructure) for Claude — courses, grades, assignments, announcements, planner, conversations",
+  "description": "Canvas LMS (Instructure) for Claude — courses, grades, assignments, planner, files",
   "repository": {
     "url": "https://github.com/chrischall/canvas-parent-mcp",
     "source": "github"

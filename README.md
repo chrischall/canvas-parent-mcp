@@ -27,27 +27,36 @@ Tools that the harness will gate as write/IO operations: `canvas_download_file`.
 
 ## Configuration
 
-Set the base URL plus *one* auth mode:
+Set the base URL plus *one* auth mode. **Username/password is recommended** — most schools have disabled personal-access-token creation, and this mode auto-logs-in on first request and silently re-mints session cookies on 401, so you never have to re-bootstrap.
 
-**Personal access token (recommended):**
-
-```
-CANVAS_BASE_URL=https://cms.instructure.com
-CANVAS_TOKEN=your-personal-access-token
-CANVAS_NAME=cms                # optional, defaults to host portion of base URL
-```
-
-**Username/password (auto-login + auto-renew, simplest when tokens are disabled):**
+**Username/password (recommended):**
 
 ```
 CANVAS_BASE_URL=https://cms.instructure.com
 CANVAS_USERNAME=me@example.com
 CANVAS_PASSWORD=your-canvas-password
+CANVAS_NAME=cms                # optional, defaults to host portion of base URL
 ```
 
-The MCP logs in lazily on the first request and silently re-mints cookies on 401, so you never have to re-bootstrap. **Direct Canvas accounts only** — won't work with SAML/Google/Microsoft SSO or 2FA. Treat `.env` like a password file: do not commit it.
+**Direct Canvas accounts only** — won't work with SAML/Google/Microsoft SSO or 2FA. Treat `.env` like a password file: do not commit it.
 
-**OAuth (advanced):**
+### Advanced alternatives
+
+If your admin still allows tokens, or your account uses SSO (so username/password won't work), pick one of these instead:
+
+<details>
+<summary><b>Personal access token</b> — simplest if your admin allows it</summary>
+
+```
+CANVAS_BASE_URL=https://cms.instructure.com
+CANVAS_TOKEN=your-personal-access-token
+```
+
+Generate via Canvas → Account → Settings → "+ New Access Token". Most institutions have disabled this for non-admins.
+</details>
+
+<details>
+<summary><b>OAuth via mobile QR code</b> — bootstrapped from the mobile-app login flow</summary>
 
 ```
 CANVAS_BASE_URL=https://cms.instructure.com
@@ -56,13 +65,16 @@ CANVAS_CLIENT_SECRET=...
 CANVAS_REFRESH_TOKEN=...
 ```
 
-Precedence when multiple are set: `CANVAS_TOKEN` > `CANVAS_USERNAME`+`CANVAS_PASSWORD` > OAuth.
+If your account uses SSO (so username/password can't auth), mint OAuth credentials by reusing the Canvas mobile-app QR-login flow — see [Bootstrapping OAuth via the mobile QR code](#bootstrapping-oauth-via-the-mobile-qr-code) below.
+</details>
+
+**Precedence when multiple are set:** `CANVAS_TOKEN` > `CANVAS_USERNAME`+`CANVAS_PASSWORD` > OAuth.
 
 See `.env.example`.
 
 ### Bootstrapping OAuth via the mobile QR code
 
-If your Canvas admin has disabled personal-access-token creation (some institutions restrict tokens to "the mobile app only"), you can mint OAuth credentials by going through the same QR-login flow that the official Canvas mobile apps use:
+If your Canvas admin has disabled personal-access-token creation (some institutions restrict tokens to "the mobile app only") AND your account uses SSO so username/password can't auth, you can mint OAuth credentials by going through the same QR-login flow that the official Canvas mobile apps use:
 
 1. In Canvas web, open **Account → QR for Mobile Login** — Canvas shows a QR that's valid for 10 minutes.
 2. Decode the QR with any QR reader. The result is a URL on `sso.canvaslms.com` like `https://sso.canvaslms.com/canvas/login?domain=...&code=...`.

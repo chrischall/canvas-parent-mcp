@@ -16,9 +16,9 @@
       ],
       "env": {
         "CANVAS_BASE_URL": "${user_config.canvas_base_url}",
-        "CANVAS_TOKEN": "${user_config.canvas_token}",
         "CANVAS_USERNAME": "${user_config.canvas_username}",
         "CANVAS_PASSWORD": "${user_config.canvas_password}",
+        "CANVAS_TOKEN": "${user_config.canvas_token}",
         "CANVAS_CLIENT_ID": "${user_config.canvas_client_id}",
         "CANVAS_CLIENT_SECRET": "${user_config.canvas_client_secret}",
         "CANVAS_REFRESH_TOKEN": "${user_config.canvas_refresh_token}",
@@ -33,42 +33,42 @@
       "description": "Canvas instance base URL, e.g. https://cms.instructure.com",
       "required": true
     },
-    "canvas_token": {
-      "type": "string",
-      "title": "Personal access token (recommended)",
-      "description": "Canvas personal access token. Generate via Account → Settings → '+ New Access Token'. Pick ONE auth mode: this token, OR username+password, OR the OAuth triple.",
-      "required": false,
-      "sensitive": true
-    },
     "canvas_username": {
       "type": "string",
-      "title": "Username / login email (auto-login)",
-      "description": "Canvas username (or login email) for the /login/canvas form. Set together with canvas_password when your admin has disabled token creation; the MCP auto-logs-in on first request and re-mints cookies on 401. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA.",
+      "title": "Username / login email (recommended)",
+      "description": "Canvas username (or login email). Pair with the password below — the MCP auto-logs-in on first request and silently re-mints cookies on 401, so you never have to re-bootstrap. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA.",
       "required": false
     },
     "canvas_password": {
       "type": "string",
-      "title": "Password (auto-login)",
+      "title": "Password (recommended)",
       "description": "Canvas password. Required only when using username/password auto-login. Stored locally in the bundle config — keep it private.",
+      "required": false,
+      "sensitive": true
+    },
+    "canvas_token": {
+      "type": "string",
+      "title": "Personal access token (advanced)",
+      "description": "Canvas personal access token. Generate via Account → Settings → '+ New Access Token'. Most institutions have disabled this for non-admins; prefer username+password if you have direct Canvas auth.",
       "required": false,
       "sensitive": true
     },
     "canvas_client_id": {
       "type": "string",
-      "title": "OAuth client ID (optional)",
-      "description": "Canvas Developer Key client ID. Required only if you're using the OAuth refresh-token mode.",
+      "title": "OAuth client ID (advanced)",
+      "description": "Canvas Developer Key client ID. Required only if you're using the OAuth refresh-token mode — typically when SSO blocks the username/password flow. Bootstrap via canvas-parent-mcp-qr-login.",
       "required": false
     },
     "canvas_client_secret": {
       "type": "string",
-      "title": "OAuth client secret (optional)",
+      "title": "OAuth client secret (advanced)",
       "description": "Canvas Developer Key client secret. Required only if you're using the OAuth refresh-token mode.",
       "required": false,
       "sensitive": true
     },
     "canvas_refresh_token": {
       "type": "string",
-      "title": "OAuth refresh token (optional)",
+      "title": "OAuth refresh token (advanced)",
       "description": "Canvas OAuth refresh token (bootstrap with canvas-parent-mcp-qr-login). Required only if using OAuth mode.",
       "required": false,
       "sensitive": true

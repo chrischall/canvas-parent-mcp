@@ -26,17 +26,22 @@ export interface SessionAccount {
 }
 
 /**
- * Read an env var, trim whitespace, and treat the empty string as unset. Also
- * defensively rejects values that look like an unsubstituted shell placeholder
- * (e.g. "${CANVAS_TOKEN}") — these can leak through .mcp.json env blocks when
- * the host (Claude Code / Desktop) doesn't expand them, and would otherwise
- * be sent to Canvas as a literal token and rejected with a confusing 401.
+ * Read an env var, trim whitespace, and treat as unset for several "looks-set
+ * but-isn't" inputs that some MCP hosts pass through when a value really is
+ * undefined:
+ *  - empty string / whitespace-only
+ *  - literal "undefined" / "null" (Claude Desktop stringifies undefined
+ *    user_config refs to the 9-letter string "undefined", which would
+ *    otherwise be sent to upstream APIs as a Bearer token and rejected)
+ *  - unsubstituted shell placeholder, e.g. "${CANVAS_TOKEN}" or
+ *    "${user_config.canvas_token}" (other hosts leave the placeholder intact)
  */
 function readVar(env: Record<string, string | undefined>, key: string): string | undefined {
   const raw = env[key];
   if (typeof raw !== 'string') return undefined;
   const trimmed = raw.trim();
   if (trimmed.length === 0) return undefined;
+  if (trimmed === 'undefined' || trimmed === 'null') return undefined;
   if (/^\$\{[^}]*\}$/.test(trimmed)) return undefined;
   return trimmed;
 }

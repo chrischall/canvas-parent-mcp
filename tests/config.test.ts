@@ -164,6 +164,24 @@ describe('loadAccount (blank/whitespace/placeholder env handling)', () => {
     expect(acct.mode).toBe('session');
   });
 
+  it('treats an unsubstituted user_config placeholder ${user_config.canvas_token} as unset', () => {
+    const acct = loadAccount({ ...userPassEnv, CANVAS_TOKEN: '${user_config.canvas_token}' });
+    expect(acct.mode).toBe('session');
+  });
+
+  it('treats the literal string "undefined" as unset (Claude Desktop stringifies undefined refs)', () => {
+    // Real bug found in the wild: Claude Desktop substitutes an undefined
+    // user_config field to the 9-letter string "undefined", which without
+    // this check would be sent to the API as Bearer undefined → 401.
+    const acct = loadAccount({ ...userPassEnv, CANVAS_TOKEN: 'undefined' });
+    expect(acct.mode).toBe('session');
+  });
+
+  it('treats the literal string "null" as unset', () => {
+    const acct = loadAccount({ ...userPassEnv, CANVAS_TOKEN: 'null' });
+    expect(acct.mode).toBe('session');
+  });
+
   it('trims surrounding whitespace from CANVAS_TOKEN', () => {
     const acct = loadAccount({
       CANVAS_BASE_URL: 'https://cms.instructure.com',

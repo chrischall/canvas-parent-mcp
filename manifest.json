@@ -79,5 +79,79 @@
       "description": "Friendly name for the Canvas instance (e.g. \"CMS\"). Defaults to the host portion of the base URL.",
       "required": false
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "canvas_get_profile",
+      "description": "Get the logged-in user's Canvas profile"
+    },
+    {
+      "name": "canvas_list_observees",
+      "description": "List students linked to your observer account"
+    },
+    {
+      "name": "canvas_list_courses",
+      "description": "List active courses with grades and term info"
+    },
+    {
+      "name": "canvas_get_course",
+      "description": "Get a single course with syllabus, teachers, and term"
+    },
+    {
+      "name": "canvas_list_assignments",
+      "description": "List a course's assignments with the user's submission"
+    },
+    {
+      "name": "canvas_list_missing_submissions",
+      "description": "List past-due unsubmitted assignments for the user or observee"
+    },
+    {
+      "name": "canvas_get_submission",
+      "description": "Get a single submission with rubric and grader comments"
+    },
+    {
+      "name": "canvas_list_recent_submissions",
+      "description": "List recently graded submissions in a course"
+    },
+    {
+      "name": "canvas_list_enrollments",
+      "description": "List active student enrollments with per-course grades"
+    },
+    {
+      "name": "canvas_list_calendar_events",
+      "description": "List calendar events or assignments across courses or users"
+    },
+    {
+      "name": "canvas_list_upcoming_events",
+      "description": "List the user's upcoming events (next 7 days)"
+    },
+    {
+      "name": "canvas_list_planner_items",
+      "description": "List planner items for the user or a linked observee"
+    },
+    {
+      "name": "canvas_list_announcements",
+      "description": "List announcements across one or more courses"
+    },
+    {
+      "name": "canvas_list_conversations",
+      "description": "List Canvas inbox conversations"
+    },
+    {
+      "name": "canvas_get_conversation",
+      "description": "Get a full conversation thread with all messages"
+    },
+    {
+      "name": "canvas_list_discussion_topics",
+      "description": "List discussion topics for a course"
+    },
+    {
+      "name": "canvas_list_course_files",
+      "description": "List a course's files (metadata only)"
+    },
+    {
+      "name": "canvas_download_file",
+      "description": "Download a Canvas file to disk by absolute URL"
+    }
+  ]
 }

@@ -29,24 +29,40 @@ import { registerConversationTools } from './tools/conversations.js';
 import { registerDiscussionTools } from './tools/discussions.js';
 import { registerFileTools } from './tools/files.js';
 
-const account = loadAccount();
-const client = new CanvasClient(account);
+// Defer config errors so the server can still start cleanly when env vars
+// aren't set (e.g. during the host's install-time smoke test, before the
+// user has filled in user_config). When not configured we register no tools
+// and log a clear stderr message — far better than the previous crash loop.
+let account: ReturnType<typeof loadAccount> | null = null;
+let configError: Error | null = null;
+try {
+  account = loadAccount();
+} catch (e) {
+  configError = e as Error;
+}
+
 const server = new McpServer({ name: 'canvas', version: '1.0.3' });
 
-registerProfileTools(server, client);
-registerObserveeTools(server, client);
-registerCourseTools(server, client);
-registerAssignmentTools(server, client);
-registerSubmissionTools(server, client);
-registerGradeTools(server, client);
-registerCalendarTools(server, client);
-registerPlannerTools(server, client);
-registerAnnouncementTools(server, client);
-registerConversationTools(server, client);
-registerDiscussionTools(server, client);
-registerFileTools(server, client);
+if (account) {
+  const client = new CanvasClient(account);
+  registerProfileTools(server, client);
+  registerObserveeTools(server, client);
+  registerCourseTools(server, client);
+  registerAssignmentTools(server, client);
+  registerSubmissionTools(server, client);
+  registerGradeTools(server, client);
+  registerCalendarTools(server, client);
+  registerPlannerTools(server, client);
+  registerAnnouncementTools(server, client);
+  registerConversationTools(server, client);
+  registerDiscussionTools(server, client);
+  registerFileTools(server, client);
 
-console.error(`[canvas-parent-mcp] Canvas: ${account.name} (${account.baseUrl}) [${account.mode}]`);
+  console.error(`[canvas-parent-mcp] Canvas: ${account.name} (${account.baseUrl}) [${account.mode}]`);
+} else {
+  console.error(`[canvas-parent-mcp] Not configured: ${configError?.message ?? 'unknown error'}`);
+  console.error('[canvas-parent-mcp] Server is running with no tools registered. Set the required env vars and reinstall.');
+}
 console.error('[canvas-parent-mcp] Developed and maintained by AI (Claude). Use at your own discretion.');
 
 const transport = new StdioServerTransport();

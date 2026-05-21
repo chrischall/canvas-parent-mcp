@@ -1,8 +1,8 @@
 {
   "name": "canvas-parent-mcp",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "mcpName": "io.github.chrischall/canvas-parent-mcp",
-  "description": "Canvas LMS (Instructure) MCP server \u2014 student/observer read access with optional file download",
+  "description": "Canvas LMS (Instructure) MCP server — student/observer read access with optional file download",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
   "repository": {
     "type": "git",

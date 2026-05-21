@@ -2,7 +2,7 @@
   "name": "canvas-parent-mcp",
   "version": "1.0.3",
   "mcpName": "io.github.chrischall/canvas-parent-mcp",
-  "description": "Canvas LMS (Instructure) MCP server — student/observer read access with optional file download",
+  "description": "Canvas LMS (Instructure) MCP server \u2014 student/observer read access with optional file download",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
   "repository": {
     "type": "git",
@@ -38,7 +38,7 @@
   ],
   "scripts": {
     "build": "tsc && npm run bundle",
-    "bundle": "esbuild src/index.ts --bundle --platform=node --format=esm --external:dotenv --outfile=dist/bundle.js",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --format=esm --external:dotenv --banner:js='import { createRequire as __createRequire } from \"module\"; const require = __createRequire(import.meta.url);' --outfile=dist/bundle.js",
     "dev": "node --env-file=.env dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest"

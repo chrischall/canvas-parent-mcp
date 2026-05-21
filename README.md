@@ -27,9 +27,28 @@ Tools that the harness will gate as write/IO operations: `canvas_download_file`.
 
 ## Configuration
 
-Set the base URL plus *one* auth mode. **Username/password is recommended** — most schools have disabled personal-access-token creation, and this mode auto-logs-in on first request and silently re-mints session cookies on 401, so you never have to re-bootstrap.
+Set `CANVAS_BASE_URL` plus one of four auth modes. `canvas-parent-mcp` tries them in priority order:
 
-**Username/password (recommended):**
+1. **`CANVAS_TOKEN`** → personal access token
+2. **`CANVAS_CLIENT_ID` + `CANVAS_CLIENT_SECRET` + `CANVAS_REFRESH_TOKEN`** → OAuth
+3. **`CANVAS_USERNAME` + `CANVAS_PASSWORD`** → session-scrape (direct Canvas accounts only)
+4. **fetchproxy fallback** → no env vars needed; reads `canvas_session` + `pseudonym_credentials` cookies from your signed-in Canvas tab via the [fetchproxy](https://github.com/chrischall/fetchproxy) browser extension
+
+If none succeed, you get an error that names every escape hatch.
+
+### Mode A — fetchproxy fallback (recommended, zero config)
+
+```
+CANVAS_BASE_URL=https://cms.instructure.com
+```
+
+Install the fetchproxy 0.3.0 Chrome / Safari extension (Chrome Web Store / Safari `.dmg`), sign into your Canvas instance once, and the MCP reads your session cookies at startup. After that, all Canvas API calls go directly from Node — the extension is **not** in the request hot path. Works with any auth flow (SSO/SAML/2FA included) because Canvas itself handled the sign-in.
+
+Multiple districts? Declared domain `instructure.com` matches every `*.instructure.com` host, so you only pair the extension once. The MCP uses whichever district you set in `CANVAS_BASE_URL`.
+
+Set `CANVAS_DISABLE_FETCHPROXY=1` to opt out (missing creds become a hard error — useful in headless CI).
+
+### Mode B — username/password (legacy session-scrape)
 
 ```
 CANVAS_BASE_URL=https://cms.instructure.com
@@ -38,11 +57,9 @@ CANVAS_PASSWORD=your-canvas-password
 CANVAS_NAME=cms                # optional, defaults to host portion of base URL
 ```
 
-**Direct Canvas accounts only** — won't work with SAML/Google/Microsoft SSO or 2FA. Treat `.env` like a password file: do not commit it.
+**Direct Canvas accounts only** — won't work with SAML/Google/Microsoft SSO or 2FA. Brittle (breaks on every Canvas login-page restyling). Prefer fetchproxy if your tab is already signed in. Treat `.env` like a password file.
 
 ### Advanced alternatives
-
-If your admin still allows tokens, or your account uses SSO (so username/password won't work), pick one of these instead:
 
 <details>
 <summary><b>Personal access token</b> — simplest if your admin allows it</summary>
@@ -65,10 +82,10 @@ CANVAS_CLIENT_SECRET=...
 CANVAS_REFRESH_TOKEN=...
 ```
 
-If your account uses SSO (so username/password can't auth), mint OAuth credentials by reusing the Canvas mobile-app QR-login flow — see [Bootstrapping OAuth via the mobile QR code](#bootstrapping-oauth-via-the-mobile-qr-code) below.
+If your account uses SSO and you can't use fetchproxy (e.g. headless server), mint OAuth credentials by reusing the Canvas mobile-app QR-login flow — see [Bootstrapping OAuth via the mobile QR code](#bootstrapping-oauth-via-the-mobile-qr-code) below.
 </details>
 
-**Precedence when multiple are set:** `CANVAS_TOKEN` > `CANVAS_USERNAME`+`CANVAS_PASSWORD` > OAuth.
+**Precedence when multiple are set:** `CANVAS_TOKEN` > username/password > OAuth > fetchproxy.
 
 See `.env.example`.
 

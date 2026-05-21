@@ -50,7 +50,7 @@ CANVAS_BASE_URL=https://cms.instructure.com   # required, must be https
 CANVAS_NAME=cms                                # optional, defaults to host
 
 # Mode A — fetchproxy fallback (recommended, zero-config).
-# Leave all CANVAS_* auth vars unset. Install the fetchproxy 0.3.0 browser
+# Leave all CANVAS_* auth vars unset. Install the fetchproxy browser
 # extension, sign into your Canvas instance once. The MCP reads
 # `canvas_session` + `pseudonym_credentials` from your tab at startup.
 CANVAS_DISABLE_FETCHPROXY=  # set to "1" to opt out
@@ -81,7 +81,7 @@ CANVAS_REFRESH_TOKEN=
 
 Declared domain is `instructure.com` for any `*.instructure.com` Canvas tenant (the matcher does `*.${domain}` matching), so the user pairs the extension once and any district they switch to via `CANVAS_BASE_URL` works. Non-`.instructure.com` self-hosted Canvas installations declare the literal hostname.
 
-`pseudonym_credentials` is HttpOnly. `@fetchproxy/bootstrap@^0.3.0` uses `chrome.cookies.get` which sees HttpOnly cookies — the security gate is the declared cookie key list, not HttpOnly status.
+`pseudonym_credentials` is HttpOnly. `@fetchproxy/bootstrap` uses `chrome.cookies.get` which sees HttpOnly cookies — the security gate is the declared cookie key list, not HttpOnly status.
 
 ## Auth modes
 

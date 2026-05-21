@@ -27,9 +27,21 @@ export class CanvasClient {
   private sessionCookie: string | null = null;
   private sessionLoginFn: SessionLoginFn;
 
-  constructor(account: Account, opts: { sessionLogin?: SessionLoginFn } = {}) {
+  /**
+   * `preloaded` is the fetchproxy escape hatch: when set, the client uses
+   * the supplied cookie header as-if it had just successfully run
+   * `sessionLogin()`. On a 401 it falls back to the lazy login flow only if
+   * usable credentials are present on the account — otherwise the 401
+   * surfaces as a TokenExpiredError (re-sign-in happens in the browser, not
+   * by re-running a form login with empty creds).
+   */
+  constructor(
+    account: Account,
+    opts: { sessionLogin?: SessionLoginFn; preloaded?: { cookie: string } } = {},
+  ) {
     this.account = account;
     this.sessionLoginFn = opts.sessionLogin ?? defaultSessionLogin;
+    if (opts.preloaded) this.sessionCookie = opts.preloaded.cookie;
   }
 
   /** Account metadata (no secrets) — useful for diagnostics. */
@@ -124,6 +136,12 @@ export class CanvasClient {
     if (res.status === 401) {
       if (isRetry || this.account.mode === 'token') {
         throw new TokenExpiredError(this.account.mode);
+      }
+      // fetchproxy path: session account with empty creds — we can't
+      // re-mint here. Surface the 401 so the user is told to re-sign-in
+      // in their browser.
+      if (this.account.mode === 'session' && !this.account.username && !this.account.password) {
+        throw new TokenExpiredError('session');
       }
       await this.ensureAuth({ force: true });
       return this.authedFetch(url, init, true);

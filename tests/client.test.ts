@@ -214,6 +214,46 @@ describe('CanvasClient.request (session mode)', () => {
   });
 });
 
+describe('CanvasClient (session mode, preloaded cookie from fetchproxy)', () => {
+  // When the fetchproxy fallback is the auth source, we hand the client a
+  // pre-seeded cookie + an account with empty username/password. The client
+  // must skip the form login and surface 401s directly (re-sign-in happens
+  // in the browser, not by re-running a login form with empty creds).
+
+  const fetchproxyAccount = (): Account => ({
+    mode: 'session',
+    name: 'cms',
+    baseUrl: 'https://cms.instructure.com',
+    username: '',
+    password: '',
+  });
+
+  it('uses the preloaded cookie on the first request without invoking sessionLogin', async () => {
+    const sessionLoginMock = vi.fn();
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({ id: 1 }));
+    const c = new CanvasClient(fetchproxyAccount(), {
+      sessionLogin: sessionLoginMock,
+      preloaded: { cookie: 'canvas_session=cs; pseudonym_credentials=pc' },
+    });
+    expect(await c.request('/x')).toEqual({ id: 1 });
+    expect(sessionLoginMock).not.toHaveBeenCalled();
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(headers.Cookie).toBe('canvas_session=cs; pseudonym_credentials=pc');
+    expect(headers.Authorization).toBeUndefined();
+  });
+
+  it('throws TokenExpiredError on 401 without trying to re-login (no creds to use)', async () => {
+    const sessionLoginMock = vi.fn();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 401 }));
+    const c = new CanvasClient(fetchproxyAccount(), {
+      sessionLogin: sessionLoginMock,
+      preloaded: { cookie: 'canvas_session=cs; pseudonym_credentials=pc' },
+    });
+    await expect(c.request('/x')).rejects.toBeInstanceOf(TokenExpiredError);
+    expect(sessionLoginMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('CanvasClient.download (session mode)', () => {
   it('sends Cookie header on the download request (no Authorization)', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'canvas-dl-'));

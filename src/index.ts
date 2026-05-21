@@ -14,7 +14,7 @@ try {
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { loadAccount } from './config.js';
+import { resolveAuth, type ResolvedAuth } from './auth.js';
 import { CanvasClient } from './client.js';
 import { registerProfileTools } from './tools/profile.js';
 import { registerObserveeTools } from './tools/observees.js';
@@ -33,18 +33,25 @@ import { registerFileTools } from './tools/files.js';
 // aren't set (e.g. during the host's install-time smoke test, before the
 // user has filled in user_config). When not configured we register no tools
 // and log a clear stderr message — far better than the previous crash loop.
-let account: ReturnType<typeof loadAccount> | null = null;
+//
+// Auth resolution (see src/auth.ts): try env vars first (token > OAuth >
+// username/password), then fall back to reading session cookies from the
+// signed-in browser tab via @fetchproxy/bootstrap. Bootstrap runs at
+// startup only — the bridge closes before any tool call.
+let resolved: ResolvedAuth | null = null;
 let configError: Error | null = null;
 try {
-  account = loadAccount();
+  resolved = await resolveAuth();
 } catch (e) {
   configError = e as Error;
 }
 
 const server = new McpServer({ name: 'canvas', version: '1.0.3' });
 
-if (account) {
-  const client = new CanvasClient(account);
+if (resolved) {
+  const client = new CanvasClient(resolved.account, {
+    preloaded: resolved.preloaded,
+  });
   registerProfileTools(server, client);
   registerObserveeTools(server, client);
   registerCourseTools(server, client);
@@ -58,7 +65,9 @@ if (account) {
   registerDiscussionTools(server, client);
   registerFileTools(server, client);
 
-  console.error(`[canvas-parent-mcp] Canvas: ${account.name} (${account.baseUrl}) [${account.mode}]`);
+  console.error(
+    `[canvas-parent-mcp] Canvas: ${resolved.account.name} (${resolved.account.baseUrl}) [${resolved.account.mode}, source: ${resolved.source}]`,
+  );
 } else {
   console.error(`[canvas-parent-mcp] Not configured: ${configError?.message ?? 'unknown error'}`);
   console.error('[canvas-parent-mcp] Server is running with no tools registered. Set the required env vars and reinstall.');

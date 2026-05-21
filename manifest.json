@@ -2,7 +2,7 @@
   "dxt_version": "0.1",
   "name": "canvas-parent-mcp",
   "version": "1.0.3",
-  "description": "Canvas LMS (Instructure) MCP — student/observer read access with optional file download",
+  "description": "Canvas LMS (Instructure) MCP — student/observer read access with optional file download. Auth via fetchproxy extension, token, OAuth, or username/password.",
   "author": {
     "name": "Claude Code (AI)"
   },
@@ -35,14 +35,14 @@
     },
     "canvas_username": {
       "type": "string",
-      "title": "Username / login email (recommended)",
-      "description": "Canvas username (or login email). Pair with the password below — the MCP auto-logs-in on first request and silently re-mints cookies on 401, so you never have to re-bootstrap. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA.",
+      "title": "Username / login email (legacy)",
+      "description": "Canvas username (or login email). Pair with the password below for session-scrape auth. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA. Prefer the fetchproxy extension for zero-config sign-in.",
       "required": false
     },
     "canvas_password": {
       "type": "string",
-      "title": "Password (recommended)",
-      "description": "Canvas password. Required only when using username/password auto-login. Stored locally in the bundle config — keep it private.",
+      "title": "Password (legacy)",
+      "description": "Canvas password. Required only when using username/password session-scrape. Stored locally in the bundle config — keep it private.",
       "required": false,
       "sensitive": true
     },

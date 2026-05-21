@@ -23,14 +23,14 @@ Add to `.mcp.json` in your project or `~/.claude/mcp.json`:
       "command": "npx",
       "args": ["-y", "canvas-parent-mcp"],
       "env": {
-        "CANVAS_BASE_URL": "https://cms.instructure.com",
-        "CANVAS_USERNAME": "me@example.com",
-        "CANVAS_PASSWORD": "your-canvas-password"
+        "CANVAS_BASE_URL": "https://cms.instructure.com"
       }
     }
   }
 }
 ```
+
+With the [fetchproxy extension](https://github.com/chrischall/fetchproxy) installed and a signed-in Canvas tab, that's enough — the MCP reads your session cookies at startup. Add `CANVAS_TOKEN`, `CANVAS_CLIENT_*`/`CANVAS_REFRESH_TOKEN`, or `CANVAS_USERNAME`/`CANVAS_PASSWORD` to the `env` block if you'd rather use one of those modes.
 
 ### Option B — from source
 
@@ -42,14 +42,15 @@ npm install && npm run build
 
 ## Authentication
 
-**Username/password (recommended).** Set `CANVAS_USERNAME` + `CANVAS_PASSWORD`. The server logs in lazily on the first request and silently re-mints session cookies on 401 — no manual rotation. Direct Canvas accounts only — no SAML/Google/Microsoft SSO or 2FA.
+**fetchproxy fallback (recommended, zero-config).** Set only `CANVAS_BASE_URL`. Install the [fetchproxy](https://github.com/chrischall/fetchproxy) browser extension, sign into your Canvas instance once. The MCP reads `canvas_session` + `pseudonym_credentials` cookies from your tab at startup; all API calls go directly from Node after that. Works with any auth flow (SSO/SAML/2FA included).
 
-### Advanced alternatives
+### Alternatives (env-var)
 
-- **Personal access token** — set `CANVAS_TOKEN`. Generate via Canvas → Account → Settings → "+ New Access Token". Most institutions have disabled this for non-admins.
-- **OAuth** — set `CANVAS_CLIENT_ID`, `CANVAS_CLIENT_SECRET`, `CANVAS_REFRESH_TOKEN`. Useful when SSO blocks the username/password flow; bootstrap with `canvas-parent-mcp-qr-login` from a Canvas web QR.
+- **Personal access token** — set `CANVAS_TOKEN`. Most institutions have disabled this for non-admins.
+- **OAuth** — set `CANVAS_CLIENT_ID`, `CANVAS_CLIENT_SECRET`, `CANVAS_REFRESH_TOKEN`. Bootstrap via `canvas-parent-mcp-qr-login`.
+- **Username/password (session-scrape)** — set `CANVAS_USERNAME` + `CANVAS_PASSWORD`. Direct Canvas accounts only (no SSO/2FA). Brittle.
 
-Precedence when multiple are set: `CANVAS_TOKEN` > `CANVAS_USERNAME`+`CANVAS_PASSWORD` > OAuth.
+Precedence when multiple are set: `CANVAS_TOKEN` > username/password > OAuth > fetchproxy. Set `CANVAS_DISABLE_FETCHPROXY=1` to opt out of the fallback.
 
 ## Tools (prefix `canvas_`)
 

@@ -108,3 +108,27 @@ This reuses the same SSO + OAuth endpoints the official Canvas Student/Parent ap
 ## Status
 
 Unofficial — not affiliated with Instructure. AI-maintained.
+
+## Acknowledgement of Terms
+
+By using this MCP server, you acknowledge and agree to the following:
+
+**1. This server accesses your own Canvas account via the official Canvas REST API.** Auth happens via your own personal access token, issued by your institution. It does not — and cannot — access anyone else's enrollments, grades, or messages.
+
+**2. [Instructure's Canvas API Policy](https://www.instructure.com/policies/canvas-api-policy) governs your use of this server**, in addition to your institution's own acceptable-use policy. The clauses most relevant here:
+
+> You may not use our APIs on behalf of any third-party… You may not use or access our APIs for competitive purposes… You may not interfere with our APIs, our systems, or other users… You may not circumvent any contractual usage limits.
+
+On rate limits: *"limits are enforced per user access token… with dynamic throttling."* On data: *"Any user information retrieved through the API—including course enrollments, grades, and profile information—should be considered and treated as private information."*
+
+You are agreeing to those terms — read by the maintainer 2026-05-23 — every time you invoke a tool in this server.
+
+**3. Personal, observer/student/parent use only.** This project is not affiliated with, endorsed by, sponsored by, or in partnership with Instructure, Inc. or any school district. It is a personal automation tool for an authenticated Canvas user (typically a parent observer) to read their own (or their student's) enrollments, assignments, grades, and announcements. Do not use it to bulk-extract a district's course content, redistribute student data, or train AI models on student records.
+
+**4. FERPA + your institution's AUP apply.** Student educational records are protected under the federal Family Educational Rights and Privacy Act (FERPA). Even though your token grants you lawful access, **how you store, redistribute, or feed that data into LLMs is regulated**. Treat any output (grades, assignments, comments, conversations) as confidential student data. Your institution's acceptable-use policy may add further restrictions on automated access — check before automating.
+
+**5. Your token is yours alone.** **Do not commit `CANVAS_API_TOKEN` to git**, do not paste it in shared chats, and rotate it if it's ever exposed. A leaked token grants full Canvas access scoped to your user.
+
+**6. You accept full responsibility** for any consequences of using this server in connection with your Canvas account — rate limiting (dynamic throttling kicks in well below documented limits when Canvas is under load), token revocation, account warnings, institution-admin investigations, or any enforcement action. If Instructure or your institution objects to your use, stop using this server.
+
+This section is the maintainer's good-faith summary of the terms — it is not legal advice and does not modify or supersede Instructure's actual Canvas API Policy or your institution's policies.

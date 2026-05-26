@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.0...v1.1.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* **ci:** prevent labeled event from cancelling auto-review ([#33](https://github.com/chrischall/canvas-parent-mcp/issues/33)) ([d453a8b](https://github.com/chrischall/canvas-parent-mcp/commit/d453a8b9f1550c75b709885bd097c53cff458076))
+
 ## [1.1.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.0.4...v1.1.0) (2026-05-24)
 
 

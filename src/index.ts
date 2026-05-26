@@ -46,7 +46,7 @@ try {
   configError = e as Error;
 }
 
-const server = new McpServer({ name: 'canvas', version: '1.1.1' }); // x-release-please-version
+const server = new McpServer({ name: 'canvas', version: '1.1.2' }); // x-release-please-version
 
 if (resolved) {
   const client = new CanvasClient(resolved.account, {

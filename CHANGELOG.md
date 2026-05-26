@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.1...v1.1.2) (2026-05-26)
+
+
+### Bug Fixes
+
+* **ci:** replace ofw-mcp references with canvas-parent-mcp in release workflow ([#35](https://github.com/chrischall/canvas-parent-mcp/issues/35)) ([18a18bb](https://github.com/chrischall/canvas-parent-mcp/commit/18a18bbfbe1838653c4d8fc278adbf1ccada3be5))
+
 ## [1.1.1](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.0...v1.1.1) (2026-05-25)
 
 

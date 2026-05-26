@@ -138,6 +138,10 @@ jobs:
             exit 0
           fi
           npx --yes clawhub login --token "$CLAWHUB_TOKEN" --no-browser
+          # ClawHub's `publish` rejects folders that look like a plugin
+          # (.claude-plugin/plugin.json present), and `package publish`
+          # requires an openclaw.plugin.json we don't have. Workaround: copy
+          # SKILL.md to a clean temp dir and publish that as a standalone skill.
           SKILL_DIR=$(mktemp -d)
           cp skills/canvas/SKILL.md "$SKILL_DIR/"
           npx --yes clawhub publish "$SKILL_DIR" --version "${VERSION}" --slug canvas-parent-mcp

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.2...v1.1.3) (2026-05-26)
+
+
+### Documentation
+
+* **claude:** warn against early PRs and call out first-party dep bumps ([#38](https://github.com/chrischall/canvas-parent-mcp/issues/38)) ([a425ab3](https://github.com/chrischall/canvas-parent-mcp/commit/a425ab34be64a474ba61153da76148d213ebf69d))
+
 ## [1.1.2](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.1...v1.1.2) (2026-05-26)
 
 

@@ -53,6 +53,7 @@
 //     the legacy paths keep working unchanged.
 
 import { bootstrap } from '@fetchproxy/bootstrap';
+import { classifyBridgeError, FetchproxyBridgeDownError } from '@fetchproxy/server';
 import { loadAccount, type Account, type SessionAccount } from './config.js';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -179,6 +180,20 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
         source: 'fetchproxy',
       };
     } catch (e) {
+      // 0.8.0+ typed-error discrimination. The fetchproxy server already
+      // retries once on SW eviction (bridgeReviveDelayMs=2000 default), so
+      // a thrown FetchproxyBridgeDownError means the retry also failed —
+      // the extension's service worker is genuinely down and the user
+      // needs to wake it. The `.hint` is the actionable copy
+      // ("click the extension toolbar icon...") that we'd otherwise have
+      // to hand-write here. Surface it verbatim so users in path 4 get
+      // the same self-service guidance as path 5.
+      if (classifyBridgeError(e) === 'bridge_down') {
+        const downErr = e as FetchproxyBridgeDownError;
+        throw new Error(
+          `Canvas auth: fetchproxy bridge is down (extension service worker unreachable after retry). ${downErr.hint}`,
+        );
+      }
       const msg = e instanceof Error ? e.message : String(e);
       throw new Error(
         `Canvas auth: no CANVAS_TOKEN, CANVAS_CLIENT_*/CANVAS_REFRESH_TOKEN, or CANVAS_USERNAME/CANVAS_PASSWORD set, ` +

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.3...v1.1.4) (2026-05-29)
+
+
+### Bug Fixes
+
+* **ci:** auto-merge arm guards ([#42](https://github.com/chrischall/canvas-parent-mcp/issues/42)) ([682e2ef](https://github.com/chrischall/canvas-parent-mcp/commit/682e2ef663d9a267e2d0d093bbeb24c674cee7dc))
+
 ## [1.1.3](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.2...v1.1.3) (2026-05-26)
 
 

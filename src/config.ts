@@ -1,3 +1,5 @@
+import { readEnvVar } from '@chrischall/mcp-utils';
+
 export type Account = TokenAccount | OAuthAccount | SessionAccount;
 
 export interface TokenAccount {
@@ -35,15 +37,14 @@ export interface SessionAccount {
  *    otherwise be sent to upstream APIs as a Bearer token and rejected)
  *  - unsubstituted shell placeholder, e.g. "${CANVAS_TOKEN}" or
  *    "${user_config.canvas_token}" (other hosts leave the placeholder intact)
+ *
+ * Backed by the fleet-shared `readEnvVar` from `@chrischall/mcp-utils`, which
+ * applies the identical sanitization (trim + empty/undefined/null/placeholder
+ * suppression). Kept as a thin local wrapper so the explicit `env` argument
+ * threads through unchanged.
  */
 function readVar(env: Record<string, string | undefined>, key: string): string | undefined {
-  const raw = env[key];
-  if (typeof raw !== 'string') return undefined;
-  const trimmed = raw.trim();
-  if (trimmed.length === 0) return undefined;
-  if (trimmed === 'undefined' || trimmed === 'null') return undefined;
-  if (/^\$\{[^}]*\}$/.test(trimmed)) return undefined;
-  return trimmed;
+  return readEnvVar(key, { env });
 }
 
 export function loadAccount(env: Record<string, string | undefined> = process.env): Account {

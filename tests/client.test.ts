@@ -398,6 +398,23 @@ describe('CanvasClient.request (oauth mode)', () => {
     await expect(c.request('/x')).rejects.toThrow(/Canvas OAuth refresh failed.*401/);
   });
 
+  it('redacts credentials from a refresh-error body before surfacing it', async () => {
+    // Pins the security guarantee documented at client.ts: the upstream error
+    // body is run through the fleet-shared sanitizer (redact-then-truncate), so
+    // a Bearer token or JWT echoed by /login/oauth2/token never reaches the
+    // client-facing error. Build a >200-char body so truncation also fires.
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.s3cr3tSignatureValue';
+    const leakyBody = `Bearer sk-live-1234567890abcdef token=${jwt} ` + 'x'.repeat(220);
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(leakyBody, { status: 401, statusText: 'Unauthorized' }));
+    const c = new CanvasClient(oauthAccount());
+    const err = await c.request('/x').catch((e) => e as Error);
+    expect(err).toBeInstanceOf(TokenExpiredError);
+    expect(err.message).not.toContain('sk-live-1234567890abcdef');
+    expect(err.message).not.toContain(jwt);
+    expect(err.message).toContain('[REDACTED]');
+  });
+
   it('serializes concurrent refreshes (one POST to oauth2/token)', async () => {
     let resolveRefresh: ((r: Response) => void) | undefined;
     const refreshPromise = new Promise<Response>((resolve) => { resolveRefresh = resolve; });

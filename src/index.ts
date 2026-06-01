@@ -1,19 +1,14 @@
 #!/usr/bin/env node
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { loadDotenvSafely, runMcp } from '@chrischall/mcp-utils';
 
-try {
-  const { config } = await import('dotenv');
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  // quiet:true suppresses dotenv's startup banner — required because MCP uses
-  // stdout for JSON-RPC and any extra output corrupts the stream.
-  config({ path: join(__dirname, '..', '.env'), override: false, quiet: true });
-} catch {
-  // dotenv not available — rely on process.env
-}
+const __dirname = dirname(fileURLToPath(import.meta.url));
+// No-throw .env loader (override:false so real host env always wins, quiet so
+// no banner corrupts the JSON-RPC stdout stream). Absent .env / missing dotenv
+// (bundled mcpb runtime) degrades to a silent no-op.
+await loadDotenvSafely({ path: join(__dirname, '..', '.env'), override: false });
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { resolveAuth, type ResolvedAuth } from './auth.js';
 import { CanvasClient } from './client.js';
 import { registerProfileTools } from './tools/profile.js';
@@ -46,33 +41,42 @@ try {
   configError = e as Error;
 }
 
-const server = new McpServer({ name: 'canvas', version: '1.1.4' }); // x-release-please-version
+// `runMcp` (from @chrischall/mcp-utils) builds the McpServer, runs the
+// registrar, then connects the stdio transport and installs SIGINT/SIGTERM
+// shutdown handlers. The deferred-config-error pattern is preserved by
+// resolving auth *before* boot and registering tools conditionally inside the
+// registrar — an unconfigured server still boots with zero tools, so the
+// host's install-time `tools/list` succeeds.
+await runMcp({
+  name: 'canvas',
+  version: '1.1.4', // x-release-please-version
+  tools: [
+    (server) => {
+      if (resolved) {
+        const client = new CanvasClient(resolved.account, {
+          preloaded: resolved.preloaded,
+        });
+        registerProfileTools(server, client);
+        registerObserveeTools(server, client);
+        registerCourseTools(server, client);
+        registerAssignmentTools(server, client);
+        registerSubmissionTools(server, client);
+        registerGradeTools(server, client);
+        registerCalendarTools(server, client);
+        registerPlannerTools(server, client);
+        registerAnnouncementTools(server, client);
+        registerConversationTools(server, client);
+        registerDiscussionTools(server, client);
+        registerFileTools(server, client);
 
-if (resolved) {
-  const client = new CanvasClient(resolved.account, {
-    preloaded: resolved.preloaded,
-  });
-  registerProfileTools(server, client);
-  registerObserveeTools(server, client);
-  registerCourseTools(server, client);
-  registerAssignmentTools(server, client);
-  registerSubmissionTools(server, client);
-  registerGradeTools(server, client);
-  registerCalendarTools(server, client);
-  registerPlannerTools(server, client);
-  registerAnnouncementTools(server, client);
-  registerConversationTools(server, client);
-  registerDiscussionTools(server, client);
-  registerFileTools(server, client);
-
-  console.error(
-    `[canvas-parent-mcp] Canvas: ${resolved.account.name} (${resolved.account.baseUrl}) [${resolved.account.mode}, source: ${resolved.source}]`,
-  );
-} else {
-  console.error(`[canvas-parent-mcp] Not configured: ${configError?.message ?? 'unknown error'}`);
-  console.error('[canvas-parent-mcp] Server is running with no tools registered. Set the required env vars and reinstall.');
-}
-console.error('[canvas-parent-mcp] Developed and maintained by AI (Claude). Use at your own discretion.');
-
-const transport = new StdioServerTransport();
-await server.connect(transport);
+        console.error(
+          `[canvas-parent-mcp] Canvas: ${resolved.account.name} (${resolved.account.baseUrl}) [${resolved.account.mode}, source: ${resolved.source}]`,
+        );
+      } else {
+        console.error(`[canvas-parent-mcp] Not configured: ${configError?.message ?? 'unknown error'}`);
+        console.error('[canvas-parent-mcp] Server is running with no tools registered. Set the required env vars and reinstall.');
+      }
+      console.error('[canvas-parent-mcp] Developed and maintained by AI (Claude). Use at your own discretion.');
+    },
+  ],
+});

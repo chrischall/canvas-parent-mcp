@@ -1,7 +1,14 @@
 import { writeFile, stat } from 'fs/promises';
 import { dirname } from 'path';
+import { parseLinkHeader, truncateErrorMessage } from '@chrischall/mcp-utils';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
 import { sessionLogin as defaultSessionLogin } from './session-login.js';
+
+// Re-export the fleet-shared RFC 5988 Link parser so existing importers
+// (`tests/client.test.ts`, and any sibling that pulled it from here) keep
+// working unchanged. `@chrischall/mcp-utils`'s `parseLinkHeader` uses the
+// identical regex and skips malformed entries the same way.
+export { parseLinkHeader };
 
 export type SessionLoginFn = typeof defaultSessionLogin;
 
@@ -195,8 +202,15 @@ export class CanvasClient {
       body,
     });
     if (!res.ok) {
+      // Run the upstream body through the fleet-shared sanitizer: it redacts
+      // `Bearer <token>` headers and JWTs FIRST, then truncates — so if Canvas's
+      // /login/oauth2/token error echoes the client_secret or refresh_token, it
+      // never reaches the client-facing error (audit HIGH finding, client.ts:199).
       const errBody = await res.text();
-      throw new TokenExpiredError('oauth', `${res.status} ${res.statusText}: ${errBody.slice(0, 200)}`);
+      throw new TokenExpiredError(
+        'oauth',
+        `${res.status} ${res.statusText}: ${truncateErrorMessage(errBody, 200)}`,
+      );
     }
     const data = await res.json() as { access_token: string; expires_in?: number };
     acct.accessToken = data.access_token;
@@ -217,19 +231,6 @@ function injectPerPage(pathOrUrl: string, perPage: number): string {
   if (/[?&]per_page=/.test(pathOrUrl)) return pathOrUrl;
   const sep = pathOrUrl.includes('?') ? '&' : '?';
   return `${pathOrUrl}${sep}per_page=${perPage}`;
-}
-
-/**
- * Parse RFC 5988 Link header. Returns object keyed by `rel`. Malformed entries
- * are skipped.
- */
-export function parseLinkHeader(header: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const part of header.split(',')) {
-    const m = part.trim().match(/^<([^>]+)>\s*;\s*rel="?([^";]+)"?/);
-    if (m) out[m[2]] = m[1];
-  }
-  return out;
 }
 
 export class TokenExpiredError extends Error {

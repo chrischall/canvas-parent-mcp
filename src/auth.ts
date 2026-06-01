@@ -54,6 +54,7 @@
 
 import { bootstrap } from '@fetchproxy/bootstrap';
 import { classifyBridgeError, FetchproxyBridgeDownError } from '@fetchproxy/server';
+import { readEnvVar } from '@chrischall/mcp-utils';
 import { loadAccount, type Account, type SessionAccount } from './config.js';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -77,14 +78,11 @@ export interface ResolvedAuth {
   source: 'env' | 'fetchproxy';
 }
 
+// Fleet-shared env sanitization (`@chrischall/mcp-utils`): trim + suppress
+// empty/"undefined"/"null"/unsubstituted-${...}-placeholder. Reads process.env
+// by default. Thin alias keeps the existing call sites unchanged.
 function readEnv(key: string): string | undefined {
-  const raw = process.env[key];
-  if (typeof raw !== 'string') return undefined;
-  const trimmed = raw.trim();
-  if (trimmed.length === 0) return undefined;
-  if (trimmed === 'undefined' || trimmed === 'null') return undefined;
-  if (/^\$\{[^}]*\}$/.test(trimmed)) return undefined;
-  return trimmed;
+  return readEnvVar(key);
 }
 
 function fetchproxyDisabled(): boolean {

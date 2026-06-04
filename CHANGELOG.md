@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.5](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.4...v1.1.5) (2026-06-04)
+
+
+### Bug Fixes
+
+* adopt @fetchproxy/server 0.13.0 (bridge host failover + re-pairing) ([#55](https://github.com/chrischall/canvas-parent-mcp/issues/55)) ([f3f1dc0](https://github.com/chrischall/canvas-parent-mcp/commit/f3f1dc0d6029db4693f1a6c3142e0e26b1c1b2b9))
+* adopt @fetchproxy/server 1.0.0 + @chrischall/mcp-utils 0.5.0 ([#57](https://github.com/chrischall/canvas-parent-mcp/issues/57)) ([b34c774](https://github.com/chrischall/canvas-parent-mcp/commit/b34c7748687f89e4e9af8c550fc4792bf86b0e4a))
+
 ## [1.1.4](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.3...v1.1.4) (2026-05-29)
 
 

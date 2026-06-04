@@ -1,7 +1,7 @@
 {
   "name": "canvas-parent-mcp",
   "displayName": "Canvas LMS",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Canvas LMS (Instructure) MCP server for Claude — courses, grades, assignments, announcements, planner, conversations, files",
   "author": {
     "name": "Chris Hall",

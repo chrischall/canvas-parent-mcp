@@ -49,7 +49,7 @@ try {
 // host's install-time `tools/list` succeeds.
 await runMcp({
   name: 'canvas',
-  version: '1.1.4', // x-release-please-version
+  version: '1.1.5', // x-release-please-version
   tools: [
     (server) => {
       if (resolved) {

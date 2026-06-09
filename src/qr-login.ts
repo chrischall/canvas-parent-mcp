@@ -8,6 +8,8 @@
 // Once we have the refresh_token + client_id + client_secret, the existing CanvasClient
 // OAuth refresh path takes over for ongoing use.
 
+import { truncateErrorMessage } from '@chrischall/mcp-utils';
+
 const SSO_HOSTS = ['sso.canvaslms.com', 'sso.beta.canvaslms.com', 'sso.test.canvaslms.com'] as const;
 
 export class QrLoginError extends Error {
@@ -63,7 +65,9 @@ export async function fetchMobileClient(domain: string, ssoHost: string): Promis
   const url = `https://${ssoHost}/api/v1/mobile_verify.json?domain=${encodeURIComponent(domain)}`;
   const res = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!res.ok) {
-    const body = (await res.text()).slice(0, 200);
+    // Fleet-shared sanitizer: redacts Bearer tokens/JWTs FIRST, then truncates,
+    // so upstream error bodies can't leak secrets into the thrown message.
+    const body = truncateErrorMessage(await res.text(), 200);
     throw new QrLoginError(`mobile_verify failed: ${res.status} ${res.statusText}: ${body}`);
   }
   const data = (await res.json()) as {
@@ -115,7 +119,10 @@ export async function exchangeAuthCode(
     }),
   });
   if (!res.ok) {
-    const body = (await res.text()).slice(0, 200);
+    // The token endpoint can echo the POSTed client_secret/code in its error
+    // body — redact (then truncate) before surfacing, matching the client.ts
+    // OAuth refresh path.
+    const body = truncateErrorMessage(await res.text(), 200);
     throw new QrLoginError(`Token exchange failed: ${res.status} ${res.statusText}: ${body}`);
   }
   const data = (await res.json()) as {

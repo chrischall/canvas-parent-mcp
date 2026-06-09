@@ -249,7 +249,6 @@ export class CanvasClient {
       );
     }
     const data = await res.json() as { access_token: string; expires_in?: number };
-    acct.accessToken = data.access_token;
     const expiresIn = data.expires_in ?? 3600;
     return {
       headers: { Authorization: `Bearer ${data.access_token}` },

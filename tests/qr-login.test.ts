@@ -144,6 +144,23 @@ describe('fetchMobileClient', () => {
     );
   });
 
+  it('redacts JWT-shaped secrets in the non-OK error body', async () => {
+    const jwt =
+      'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(`upstream error: ${jwt}`, { status: 503, statusText: 'unavailable' }),
+    );
+    const err: Error = await fetchMobileClient('cms.instructure.com', 'sso.canvaslms.com').then(
+      () => {
+        throw new Error('expected rejection');
+      },
+      (e: Error) => e,
+    );
+    expect(err).toBeInstanceOf(QrLoginError);
+    expect(err.message).not.toContain(jwt);
+    expect(err.message).toContain('[REDACTED]');
+  });
+
   it('strips a trailing slash from the returned base_url', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       jsonRes({
@@ -216,6 +233,25 @@ describe('exchangeAuthCode', () => {
       new Response('{"error":"invalid_grant"}', { status: 400, statusText: 'Bad Request' }),
     );
     await expect(exchangeAuthCode(client, 'c')).rejects.toThrow(/400.*invalid_grant/);
+  });
+
+  it('redacts Bearer-shaped secrets echoed in the non-OK error body', async () => {
+    const secret = 'mobile-csec-echoed-9f8e7d6c';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(`{"error":"invalid_grant","echo":"Authorization: Bearer ${secret}"}`, {
+        status: 400,
+        statusText: 'Bad Request',
+      }),
+    );
+    const err: Error = await exchangeAuthCode(client, 'c').then(
+      () => {
+        throw new Error('expected rejection');
+      },
+      (e: Error) => e,
+    );
+    expect(err).toBeInstanceOf(QrLoginError);
+    expect(err.message).not.toContain(secret);
+    expect(err.message).toContain('Bearer [REDACTED]');
   });
 
   it('omits expiresIn when missing from response', async () => {

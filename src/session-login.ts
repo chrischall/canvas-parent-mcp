@@ -5,11 +5,11 @@
 // page to capture the CSRF cookie + authenticity_token, then POST credentials
 // and harvest the resulting session cookies (canvas_session, pseudonym_credentials).
 //
-// The returned cookie jar is held in memory by CanvasClient.sessionCookie and
-// sent on every API request in place of an OAuth bearer token; on a 401 the
-// client re-invokes sessionLogin to mint a fresh jar. pseudonym_credentials
-// is the "remember me" cookie with a meaningful expiry (~14 days);
-// canvas_session piggybacks on it.
+// The returned cookie jar is held in memory by CanvasClient's
+// CookieSessionManager (as the minted session) and sent on every API request in
+// place of an OAuth bearer token; on a 401 the manager re-invokes sessionLogin
+// to mint a fresh jar. pseudonym_credentials is the "remember me" cookie with a
+// meaningful expiry (~14 days); canvas_session piggybacks on it.
 
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +

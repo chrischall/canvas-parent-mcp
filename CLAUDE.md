@@ -92,7 +92,7 @@ Declared domain is `instructure.com` for any `*.instructure.com` Canvas tenant (
 | `session` (fetchproxy) | Cookies preloaded from browser; no form login. | 401 throws `TokenExpiredError('session')` immediately — re-sign-in happens in the browser, not by re-running a form login with empty creds. |
 | `oauth` | `grant_type=refresh_token` against `/login/oauth2/token`. Refreshes proactively 60s before `expires_in`, reactively on 401. | Refresh failure throws `TokenExpiredError('oauth')` with status + first 200 chars of the error body. |
 
-`CanvasClient.authedFetch` is the single 401-retry path: token + fetchproxy-session modes throw immediately; legacy session + oauth get exactly one forced re-auth before giving up. `ensureAuth` deduplicates concurrent refreshes via `refreshInFlight`.
+`CanvasClient.authedFetch` routes every authed request through a shared `CookieSessionManager` (`@chrischall/mcp-utils/session`): it single-flights the initial `login()`, and on a 401 flagged by `isExpired` re-mints + replays the request exactly once. token + fetchproxy-session 401s aren't flagged as expired (`canReauth()` is false), so they pass back as a 401 Response that `doRawRequest`/`download` map to `TokenExpiredError`; legacy session + oauth get the one forced re-auth. The manager owns the single-flight semaphore and clear-on-settle (a rejected login never sticks). oauth's *proactive* 60s-before-expiry refresh isn't response-driven, so it lives in `proactivelyExpire()`, which `invalidate()`s the manager when the live token is inside the skew window.
 
 ## Tools
 

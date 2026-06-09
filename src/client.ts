@@ -1,6 +1,7 @@
 import { writeFile, stat } from 'fs/promises';
 import { dirname } from 'path';
 import { parseLinkHeader, truncateErrorMessage } from '@chrischall/mcp-utils';
+import { CookieSessionManager } from '@chrischall/mcp-utils/session';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
 import { sessionLogin as defaultSessionLogin } from './session-login.js';
 
@@ -27,12 +28,27 @@ export interface PaginatedOpts extends RequestOpts {
 const DEFAULT_PER_PAGE = 100;
 const DEFAULT_MAX_PAGES = 50;
 
+/**
+ * The session shape the {@link CookieSessionManager} mints and replays for us.
+ * Canvas spans three auth modes (token / oauth / session-cookie), so rather than
+ * a bare `cookieHeader` we carry the ready-to-attach auth `headers` plus, for
+ * oauth, the absolute access-token expiry. The manager owns *when* `login` runs
+ * (lazy first call + reactive re-login on a flagged 401); the proactive-refresh
+ * nuance oauth needs (re-mint 60s before expiry) lives here, in the client's
+ * `authState()` guard, because the manager's expiry detection is response-driven
+ * and has no proactive-window concept.
+ */
+interface CanvasAuth {
+  headers: Record<string, string>;
+  /** Absolute oauth access-token expiry (epoch ms); undefined for token/session. */
+  accessTokenExpiresAt?: number;
+}
+
 export class CanvasClient {
   private account: Account;
-  private refreshInFlight: Promise<void> | null = null;
-  private accessTokenExpiresAt = 0;
-  private sessionCookie: string | null = null;
   private sessionLoginFn: SessionLoginFn;
+  private preloadedCookie: string | null;
+  private auth: CookieSessionManager<CanvasAuth>;
 
   /**
    * `preloaded` is the fetchproxy escape hatch: when set, the client uses
@@ -48,7 +64,15 @@ export class CanvasClient {
   ) {
     this.account = account;
     this.sessionLoginFn = opts.sessionLogin ?? defaultSessionLogin;
-    if (opts.preloaded) this.sessionCookie = opts.preloaded.cookie;
+    this.preloadedCookie = opts.preloaded?.cookie ?? null;
+    this.auth = new CookieSessionManager<CanvasAuth>({
+      login: () => this.login(),
+      // Reactive expiry: only a 401 in a mode that can re-mint warrants a replay.
+      // token mode and fetchproxy-session (empty creds) can't re-auth here — their
+      // 401 falls through as a Response and `mapStatus` turns it into a
+      // TokenExpiredError so the user is told to re-sign-in / re-config.
+      isExpired: (res) => res.status === 401 && this.canReauth(),
+    });
   }
 
   /** Account metadata (no secrets) — useful for diagnostics. */
@@ -95,6 +119,7 @@ export class CanvasClient {
 
     const url = /^https?:\/\//i.test(path) ? path : `${this.account.baseUrl}${path}`;
     const res = await this.authedFetch(url, {});
+    if (res.status === 401) throw new TokenExpiredError(this.account.mode);
     if (res.status === 404) throw new Error(`Canvas download 404 for ${path}`);
     if (!res.ok) throw new Error(`Canvas download ${res.status} for ${path}`);
 
@@ -118,6 +143,7 @@ export class CanvasClient {
       body: opts.body,
     });
 
+    if (res.status === 401) throw new TokenExpiredError(this.account.mode);
     if (res.status === 404) throw new Error(`Canvas 404 ${path}`);
     if (res.status >= 500) throw new CanvasUnreachableError(res.status);
     if (!res.ok) throw new Error(`Canvas ${res.status} ${res.statusText} for ${path}`);
@@ -125,71 +151,81 @@ export class CanvasClient {
   }
 
   /**
-   * Fetch with auth headers attached and transparent 401 retry. Token mode has
-   * no refresh path so a 401 throws immediately; oauth and session both attempt
-   * one re-auth before giving up. Used by both API requests and file downloads.
+   * Fetch with auth headers attached, routed through the shared
+   * {@link CookieSessionManager}: it single-flights the initial login, and on a
+   * 401 that {@link canReauth} permits, re-mints the credential and replays the
+   * request EXACTLY once. token mode and fetchproxy-session 401s aren't flagged
+   * as expired, so they pass straight back as a 401 Response — the request/
+   * download callers map that to a {@link TokenExpiredError}. Used by both API
+   * requests and file downloads.
    */
-  private async authedFetch(
-    url: string,
-    init: RequestInit,
-    isRetry = false,
-  ): Promise<Response> {
-    await this.ensureAuth();
-    const res = await fetch(url, {
-      ...init,
-      headers: { ...this.getAuthHeaders(), ...(init.headers as Record<string, string> | undefined) },
-    });
+  private async authedFetch(url: string, init: RequestInit): Promise<Response> {
+    this.proactivelyExpire();
+    return this.auth.withSession(async (state) =>
+      fetch(url, {
+        ...init,
+        headers: { ...state.headers, ...(init.headers as Record<string, string> | undefined) },
+      }),
+    );
+  }
 
-    if (res.status === 401) {
-      if (isRetry || this.account.mode === 'token') {
-        throw new TokenExpiredError(this.account.mode);
-      }
-      // fetchproxy path: session account with empty creds — we can't
-      // re-mint here. Surface the 401 so the user is told to re-sign-in
-      // in their browser.
-      if (this.account.mode === 'session' && !this.account.username && !this.account.password) {
-        throw new TokenExpiredError('session');
-      }
-      await this.ensureAuth({ force: true });
-      return this.authedFetch(url, init, true);
+  /**
+   * oauth's proactive refresh: the manager only re-logs-in reactively (on a
+   * flagged 401), but Canvas oauth tokens should be re-minted 60s *before*
+   * expiry (the 60s skew is baked into `accessTokenExpiresAt`). When the live
+   * access token is inside that window we invalidate the manager so the next
+   * `ensure()` (inside `withSession`) mints a fresh one. No-op for token/session
+   * (no `accessTokenExpiresAt`) and before the first login (no current session).
+   */
+  private proactivelyExpire(): void {
+    const state = this.auth.current;
+    if (
+      state?.accessTokenExpiresAt !== undefined &&
+      Date.now() >= state.accessTokenExpiresAt
+    ) {
+      this.auth.invalidate();
     }
-    return res;
   }
 
-  private getAuthHeaders(): Record<string, string> {
+  /** Whether a 401 in the current mode can be recovered by re-running login(). */
+  private canReauth(): boolean {
     const acct = this.account;
-    if (acct.mode === 'token') return { Authorization: `Bearer ${acct.token}` };
-    // For oauth/session: callers always invoke ensureAuth() first, which guarantees the credential is set.
-    if (acct.mode === 'session') return { Cookie: this.sessionCookie! };
-    return { Authorization: `Bearer ${acct.accessToken!}` };
+    if (acct.mode === 'oauth') return true;
+    // session: only when we hold real form credentials. The fetchproxy path
+    // synthesizes a SessionAccount with empty username/password and a preloaded
+    // cookie — it can't re-mint, so its 401 is terminal.
+    if (acct.mode === 'session') return !!acct.username && !!acct.password;
+    return false; // token mode: no refresh path.
   }
 
-  private async ensureAuth(opts: { force?: boolean } = {}): Promise<void> {
+  /** Mint the auth credential for the current mode. Invoked by the manager. */
+  private async login(): Promise<CanvasAuth> {
     const acct = this.account;
-    if (acct.mode === 'token') return;
-
-    if (!opts.force) {
-      if (acct.mode === 'oauth' && acct.accessToken && Date.now() < this.accessTokenExpiresAt) return;
-      if (acct.mode === 'session' && this.sessionCookie) return;
+    if (acct.mode === 'token') {
+      return { headers: { Authorization: `Bearer ${acct.token}` } };
     }
-
-    if (this.refreshInFlight) { await this.refreshInFlight; return; }
-    this.refreshInFlight = acct.mode === 'oauth'
-      ? this.refreshAccessToken(acct)
-      : this.mintSessionCookie(acct);
-    try { await this.refreshInFlight; } finally { this.refreshInFlight = null; }
+    if (acct.mode === 'session') {
+      // fetchproxy path: a preloaded cookie stands in for a form login on the
+      // first ensure(). (A 401 here is terminal — canReauth() is false — so the
+      // manager never asks login() to re-mint with empty creds.)
+      if (this.preloadedCookie !== null) {
+        return { headers: { Cookie: this.preloadedCookie } };
+      }
+      return { headers: { Cookie: await this.mintSessionCookie(acct) } };
+    }
+    return this.refreshAccessToken(acct);
   }
 
-  private async mintSessionCookie(acct: SessionAccount): Promise<void> {
+  private async mintSessionCookie(acct: SessionAccount): Promise<string> {
     const result = await this.sessionLoginFn({
       baseUrl: acct.baseUrl,
       username: acct.username,
       password: acct.password,
     });
-    this.sessionCookie = result.cookie;
+    return result.cookie;
   }
 
-  private async refreshAccessToken(acct: OAuthAccount): Promise<void> {
+  private async refreshAccessToken(acct: OAuthAccount): Promise<CanvasAuth> {
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
       client_id: acct.clientId,
@@ -205,7 +241,7 @@ export class CanvasClient {
       // Run the upstream body through the fleet-shared sanitizer: it redacts
       // `Bearer <token>` headers and JWTs FIRST, then truncates — so if Canvas's
       // /login/oauth2/token error echoes the client_secret or refresh_token, it
-      // never reaches the client-facing error (audit HIGH finding, client.ts:199).
+      // never reaches the client-facing error (audit HIGH finding).
       const errBody = await res.text();
       throw new TokenExpiredError(
         'oauth',
@@ -213,9 +249,11 @@ export class CanvasClient {
       );
     }
     const data = await res.json() as { access_token: string; expires_in?: number };
-    acct.accessToken = data.access_token;
     const expiresIn = data.expires_in ?? 3600;
-    this.accessTokenExpiresAt = Date.now() + (expiresIn - 60) * 1000;
+    return {
+      headers: { Authorization: `Bearer ${data.access_token}` },
+      accessTokenExpiresAt: Date.now() + (expiresIn - 60) * 1000,
+    };
   }
 }
 

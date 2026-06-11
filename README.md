@@ -1,5 +1,9 @@
 # canvas-parent-mcp
 
+[![CI](https://github.com/chrischall/canvas-parent-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/chrischall/canvas-parent-mcp/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/canvas-parent-mcp)](https://www.npmjs.com/package/canvas-parent-mcp)
+[![license](https://img.shields.io/npm/l/canvas-parent-mcp)](LICENSE)
+
 MCP server for Canvas LMS (Instructure), scoped for parent observers and student self-access. Targets `https://cms.instructure.com` by default but works against any Canvas instance.
 
 Mirrors the read-only parent-portal scope of sibling [`infinitecampus-mcp`](https://github.com/chrischall/infinitecampus-mcp). Users interact via the `canvas_*` tool prefix.

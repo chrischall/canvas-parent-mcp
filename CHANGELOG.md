@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.6](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.5...v1.1.6) (2026-06-13)
+
+
+### Bug Fixes
+
+* bot PRs bypass the CI gate unconditionally (upstream curtaincall[#86](https://github.com/chrischall/canvas-parent-mcp/issues/86) review) ([#67](https://github.com/chrischall/canvas-parent-mcp/issues/67)) ([ce9a800](https://github.com/chrischall/canvas-parent-mcp/commit/ce9a800a39ce3fa36bd2b5908b31e7739896614d))
+
+
+### Documentation
+
+* add MIT LICENSE file and README badges ([#65](https://github.com/chrischall/canvas-parent-mcp/issues/65)) ([cf46e99](https://github.com/chrischall/canvas-parent-mcp/commit/cf46e99d5512c3230fc88e0f4a66720d6bd3c2e4))
+* correct release flow to describe release-please ([#63](https://github.com/chrischall/canvas-parent-mcp/issues/63)) ([f9587e5](https://github.com/chrischall/canvas-parent-mcp/commit/f9587e50175d42a93f7b6b706a4e5a76330edc20))
+
 ## [1.1.5](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.4...v1.1.5) (2026-06-04)
 
 

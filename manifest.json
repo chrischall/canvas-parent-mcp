@@ -1,7 +1,7 @@
 {
   "dxt_version": "0.1",
   "name": "canvas-parent-mcp",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Canvas LMS (Instructure) MCP — student/observer read access with optional file download. Auth via fetchproxy extension, token, OAuth, or username/password.",
   "author": {
     "name": "Claude Code (AI)"

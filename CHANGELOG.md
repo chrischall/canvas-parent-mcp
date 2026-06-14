@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.7](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.6...v1.1.7) (2026-06-14)
+
+
+### Documentation
+
+* require Conventional Commit PR titles for release-please ([#71](https://github.com/chrischall/canvas-parent-mcp/issues/71)) ([37a6584](https://github.com/chrischall/canvas-parent-mcp/commit/37a6584701bfb33ba6f95d2bd14aae4e99dc17cc))
+
 ## [1.1.6](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.5...v1.1.6) (2026-06-13)
 
 

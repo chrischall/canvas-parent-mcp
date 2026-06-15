@@ -14,17 +14,20 @@
 //      most reliable mode but most schools have disabled token creation
 //      for non-admins. Unchanged from pre-fetchproxy behavior.
 //
-//   2. OAuth refresh token (existing)
-//      CANVAS_CLIENT_ID + CANVAS_CLIENT_SECRET + CANVAS_REFRESH_TOKEN →
-//      `grant_type=refresh_token` against `/login/oauth2/token`, bootstrap
-//      via the bundled QR-login helper. Unchanged.
-//
-//   3. Username/password session-scrape (existing)
+//   2. Username/password session-scrape (existing)
 //      CANVAS_USERNAME + CANVAS_PASSWORD → scrape `authenticity_token`
 //      from `/login/canvas`, POST creds, capture `canvas_session` +
 //      `pseudonym_credentials` cookies. Brittle (breaks on SSO/2FA and
 //      every Canvas login-page restyling) but works for direct Canvas
-//      accounts. Unchanged from pre-fetchproxy behavior.
+//      accounts. Takes precedence over OAuth (path 3) — see the
+//      precedence order in `loadAccount()` (config.ts), which returns the
+//      username/password account before checking the OAuth triple.
+//      Unchanged from pre-fetchproxy behavior.
+//
+//   3. OAuth refresh token (existing)
+//      CANVAS_CLIENT_ID + CANVAS_CLIENT_SECRET + CANVAS_REFRESH_TOKEN →
+//      `grant_type=refresh_token` against `/login/oauth2/token`, bootstrap
+//      via the bundled QR-login helper. Unchanged.
 //
 //   4. fetchproxy fallback (new)
 //      When no env vars are set, lift the user's session out of their

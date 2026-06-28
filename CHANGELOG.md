@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.7](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.6...v1.1.7) (2026-06-28)
+
+
+### Documentation
+
+* fix auth priority order + add auto-review follow-up convention ([#75](https://github.com/chrischall/canvas-parent-mcp/issues/75)) ([f1cc979](https://github.com/chrischall/canvas-parent-mcp/commit/f1cc9794141b3688d59e02637e5bb1075fb3d287))
+* fix auth.ts precedence comments to match loadAccount order ([#76](https://github.com/chrischall/canvas-parent-mcp/issues/76)) ([6ad6b49](https://github.com/chrischall/canvas-parent-mcp/commit/6ad6b49ae6fb2d07e0a188593508a523dbf25730))
+* require Conventional Commit PR titles for release-please ([#71](https://github.com/chrischall/canvas-parent-mcp/issues/71)) ([37a6584](https://github.com/chrischall/canvas-parent-mcp/commit/37a6584701bfb33ba6f95d2bd14aae4e99dc17cc))
+
 ## [1.1.6](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.5...v1.1.6) (2026-06-13)
 
 

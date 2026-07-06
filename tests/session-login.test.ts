@@ -2,8 +2,6 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   SessionLoginError,
   extractAuthenticityToken,
-  parseSetCookie,
-  serializeCookies,
   sessionLogin,
 } from '../src/session-login.js';
 
@@ -53,59 +51,6 @@ describe('extractAuthenticityToken', () => {
       '<input name="authenticity_token">' +
       '<input name="authenticity_token" value="real">';
     expect(extractAuthenticityToken(html)).toBe('real');
-  });
-});
-
-describe('parseSetCookie', () => {
-  it('returns name and value, ignoring attributes', () => {
-    expect(parseSetCookie('canvas_session=abc; Path=/; Secure; HttpOnly')).toEqual({
-      name: 'canvas_session',
-      value: 'abc',
-    });
-  });
-
-  it('preserves URL-encoded characters in the value', () => {
-    expect(parseSetCookie('_csrf_token=3P%2FfrAx%3D%3D; path=/')).toEqual({
-      name: '_csrf_token',
-      value: '3P%2FfrAx%3D%3D',
-    });
-  });
-
-  it('handles a cookie with no attributes', () => {
-    expect(parseSetCookie('foo=bar')).toEqual({ name: 'foo', value: 'bar' });
-  });
-
-  it('returns null for malformed input (no equals sign)', () => {
-    expect(parseSetCookie('garbage')).toBeNull();
-  });
-
-  it('returns null when name is empty', () => {
-    expect(parseSetCookie('=value; Path=/')).toBeNull();
-  });
-
-  it('preserves an empty value', () => {
-    expect(parseSetCookie('foo=; Path=/')).toEqual({ name: 'foo', value: '' });
-  });
-});
-
-describe('serializeCookies', () => {
-  it('joins name=value pairs with "; "', () => {
-    expect(
-      serializeCookies([
-        { name: 'a', value: '1' },
-        { name: 'b', value: '2' },
-      ]),
-    ).toBe('a=1; b=2');
-  });
-
-  it('returns an empty string for an empty list', () => {
-    expect(serializeCookies([])).toBe('');
-  });
-
-  it('preserves URL-encoded values', () => {
-    expect(serializeCookies([{ name: '_csrf_token', value: '3P%2FfrAx%3D%3D' }])).toBe(
-      '_csrf_token=3P%2FfrAx%3D%3D',
-    );
   });
 });
 

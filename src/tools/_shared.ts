@@ -1,4 +1,4 @@
-import { textResult } from '@chrischall/mcp-utils';
+import { buildQueryString, textResult } from '@chrischall/mcp-utils';
 
 /**
  * Wrap a value as an MCP text content block — the standard tool return shape.
@@ -24,7 +24,9 @@ export function toArray<T>(value: T | T[] | null | undefined): T[] {
 /**
  * Build a URL path with mixed scalar and array params. Handles Canvas's
  * `include[]=foo&include[]=bar` shape naturally — pass an array value with a
- * key like 'include[]'. Skips undefined / null. Booleans become "true"/"false".
+ * key like 'include[]' (the fleet-shared `buildQueryString` repeats the key
+ * for array values). Skips undefined / null / empty-string values. Booleans
+ * become "true"/"false".
  */
 export type QueryValue = string | number | boolean | string[] | undefined | null;
 
@@ -32,16 +34,7 @@ export function buildPath(
   base: string,
   params: Record<string, QueryValue> = {},
 ): string {
-  const parts: string[] = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null) continue;
-    if (Array.isArray(value)) {
-      for (const v of value) parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`);
-    } else {
-      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
-    }
-  }
-  return parts.length ? `${base}?${parts.join('&')}` : base;
+  return `${base}${buildQueryString(params)}`;
 }
 
 /** Compute the user path segment: 'users/self' or 'users/{id}'. */

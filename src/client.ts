@@ -1,6 +1,6 @@
 import { writeFile, stat } from 'fs/promises';
 import { dirname } from 'path';
-import { parseLinkHeader, truncateErrorMessage } from '@chrischall/mcp-utils';
+import { createOAuth2Refresher, parseLinkHeader } from '@chrischall/mcp-utils';
 import { CookieSessionManager } from '@chrischall/mcp-utils/session';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
 import { sessionLogin as defaultSessionLogin } from './session-login.js';
@@ -49,6 +49,8 @@ export class CanvasClient {
   private sessionLoginFn: SessionLoginFn;
   private preloadedCookie: string | null;
   private auth: CookieSessionManager<CanvasAuth>;
+  /** Lazily-built shared refresh_token exchanger (oauth mode only). */
+  private oauthRefresh: ReturnType<typeof createOAuth2Refresher> | null = null;
 
   /**
    * `preloaded` is the fetchproxy escape hatch: when set, the client uses
@@ -225,33 +227,34 @@ export class CanvasClient {
     return result.cookie;
   }
 
+  /**
+   * Exchange the refresh token for a fresh access token via the fleet-shared
+   * `createOAuth2Refresher` (which owns the form-encoded POST, the single-
+   * in-flight guard, and the redact-then-truncate sanitizing of upstream error
+   * bodies — so if Canvas's /login/oauth2/token error echoes the client_secret
+   * or refresh_token, it never reaches the client-facing error). Canvas-specific
+   * bits stay here: the TokenExpiredError('oauth') wrapper and the 60s
+   * proactive-expiry skew baked into `accessTokenExpiresAt`.
+   */
   private async refreshAccessToken(acct: OAuthAccount): Promise<CanvasAuth> {
-    const body = new URLSearchParams({
-      grant_type: 'refresh_token',
-      client_id: acct.clientId,
-      client_secret: acct.clientSecret,
-      refresh_token: acct.refreshToken,
-    }).toString();
-    const res = await fetch(`${acct.baseUrl}/login/oauth2/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
+    this.oauthRefresh ??= createOAuth2Refresher({
+      endpoint: `${acct.baseUrl}/login/oauth2/token`,
+      refreshToken: acct.refreshToken,
+      params: { client_id: acct.clientId, client_secret: acct.clientSecret },
     });
-    if (!res.ok) {
-      // Run the upstream body through the fleet-shared sanitizer: it redacts
-      // `Bearer <token>` headers and JWTs FIRST, then truncates — so if Canvas's
-      // /login/oauth2/token error echoes the client_secret or refresh_token, it
-      // never reaches the client-facing error (audit HIGH finding).
-      const errBody = await res.text();
-      throw new TokenExpiredError(
-        'oauth',
-        `${res.status} ${res.statusText}: ${truncateErrorMessage(errBody, 200)}`,
-      );
+    let accessToken: string;
+    let expiresIn: number;
+    try {
+      const result = await this.oauthRefresh();
+      accessToken = result.accessToken;
+      expiresIn = result.expiresIn ?? 3600;
+    } catch (e) {
+      // The refresher always throws Error (McpToolError) with a pre-redacted,
+      // pre-truncated message — safe to embed as the TokenExpiredError detail.
+      throw new TokenExpiredError('oauth', (e as Error).message);
     }
-    const data = await res.json() as { access_token: string; expires_in?: number };
-    const expiresIn = data.expires_in ?? 3600;
     return {
-      headers: { Authorization: `Bearer ${data.access_token}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
       accessTokenExpiresAt: Date.now() + (expiresIn - 60) * 1000,
     };
   }

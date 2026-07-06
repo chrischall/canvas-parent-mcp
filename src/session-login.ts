@@ -10,6 +10,13 @@
 // place of an OAuth bearer token; on a 401 the manager re-invokes sessionLogin
 // to mint a fresh jar. pseudonym_credentials is the "remember me" cookie with a
 // meaningful expiry (~14 days); canvas_session piggybacks on it.
+//
+// Cookie parsing/serialization is the fleet-shared `CookieJar` /
+// `parseCookieJar` from `@chrischall/mcp-utils` (same attribute-stripping
+// `name=value; …` semantics the hand-rolled helpers here used to implement,
+// plus deletion-marker handling).
+
+import { CookieJar, parseCookieJar } from '@chrischall/mcp-utils';
 
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
@@ -33,35 +40,13 @@ export function extractAuthenticityToken(html: string): string | null {
   return null;
 }
 
-export interface Cookie {
-  name: string;
-  value: string;
-}
-
-export function parseSetCookie(setCookieValue: string): Cookie | null {
-  const semi = setCookieValue.indexOf(';');
-  const nameValue = semi === -1 ? setCookieValue : setCookieValue.slice(0, semi);
-  const eq = nameValue.indexOf('=');
-  if (eq === -1) return null;
-  const name = nameValue.slice(0, eq).trim();
-  const value = nameValue.slice(eq + 1).trim();
-  if (!name) return null;
-  return { name, value };
-}
-
-export function serializeCookies(cookies: Cookie[]): string {
-  return cookies.map((c) => `${c.name}=${c.value}`).join('; ');
-}
-
-function collectSetCookies(headers: Headers): Cookie[] {
-  const out: Cookie[] = [];
-  // Node 18+: Headers.getSetCookie() returns each Set-Cookie as a separate string.
-  for (const sc of headers.getSetCookie()) {
-    const parsed = parseSetCookie(sc);
-    if (parsed) out.push(parsed);
-  }
-  return out;
-}
+/** The cookies that actually authenticate Canvas API calls. */
+const SESSION_COOKIE_NAMES = [
+  'canvas_session',
+  'pseudonym_credentials',
+  '_csrf_token',
+  'log_session_id',
+];
 
 export interface SessionLoginResult {
   cookie: string;
@@ -88,7 +73,8 @@ export async function sessionLogin(opts: {
     );
   }
   const html = await getRes.text();
-  const initialCookies = collectSetCookies(getRes.headers);
+  const jar = new CookieJar();
+  jar.absorb(getRes.headers);
   const authToken = extractAuthenticityToken(html);
   if (!authToken) {
     throw new SessionLoginError(
@@ -116,7 +102,7 @@ export async function sessionLogin(opts: {
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'text/html,application/xhtml+xml',
       'User-Agent': USER_AGENT,
-      Cookie: serializeCookies(initialCookies),
+      Cookie: jar.header(),
       Origin: baseUrl,
       Referer: loginUrl,
     },
@@ -126,8 +112,8 @@ export async function sessionLogin(opts: {
   // 3. Verify success by looking for the pseudonym_credentials cookie. Canvas sets it
   //    only when authentication actually succeeded; a failed login returns a fresh
   //    csrf token but no credentials cookie.
-  const respCookies = collectSetCookies(postRes.headers);
-  const hasCreds = respCookies.some((c) => c.name === 'pseudonym_credentials');
+  const respJar = parseCookieJar(postRes.headers.getSetCookie());
+  const hasCreds = 'pseudonym_credentials' in respJar.cookies;
 
   if (!hasCreds) {
     const location = postRes.headers.get('location') ?? '';
@@ -144,10 +130,11 @@ export async function sessionLogin(opts: {
   }
 
   // Filter to the cookies that actually authenticate API calls. Path/Secure/HttpOnly
-  // attributes are stripped during parseSetCookie, so we just join name=value pairs.
-  const sessionCookies = respCookies.filter((c) =>
-    ['canvas_session', 'pseudonym_credentials', '_csrf_token', 'log_session_id'].includes(c.name),
-  );
+  // attributes are stripped by parseCookieJar, so we just join name=value pairs.
+  const cookie = Object.entries(respJar.cookies)
+    .filter(([name]) => SESSION_COOKIE_NAMES.includes(name))
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ');
 
-  return { cookie: serializeCookies(sessionCookies) };
+  return { cookie };
 }

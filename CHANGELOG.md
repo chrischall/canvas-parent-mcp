@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.8](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.7...v1.1.8) (2026-07-07)
+
+
+### Bug Fixes
+
+* bump @chrischall/mcp-utils to 0.12.0 ([#88](https://github.com/chrischall/canvas-parent-mcp/issues/88)) ([63a725e](https://github.com/chrischall/canvas-parent-mcp/commit/63a725e506f87a4a8f6eef5d6644797477bd514e))
+
+
+### Refactor
+
+* adopt shared CookieJar and createOAuth2Refresher from mcp-utils ([#85](https://github.com/chrischall/canvas-parent-mcp/issues/85)) ([db5b87f](https://github.com/chrischall/canvas-parent-mcp/commit/db5b87fa9ef00ab6964f1b151a3de2ec2d738dae))
+
 ## [1.1.7](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.6...v1.1.7) (2026-07-05)
 
 

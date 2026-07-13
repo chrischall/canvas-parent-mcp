@@ -124,8 +124,7 @@ npm test
 .mcp.json                        # Standalone MCP config
 manifest.json                    # MCPB / Claude Desktop bundle manifest
 server.json                      # MCP registry manifest
-skills/canvas/SKILL.md           # User-facing skill (when/how to invoke tools)
-SKILL.md                         # Plugin-level skill copy
+skills/canvas-parent/SKILL.md    # User-facing skill (when/how to invoke tools) — plugin-discovered via "./skills/"
 ```
 
 ## Publishing constraints

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.8...v1.2.0) (2026-07-13)
+
+
+### Features
+
+* **skill:** add canvas-parent api access skill ([#92](https://github.com/chrischall/canvas-parent-mcp/issues/92)) ([effd88f](https://github.com/chrischall/canvas-parent-mcp/commit/effd88fc00d14efd33638fd8eeb4bb155cb7c1c2)), closes [#93](https://github.com/chrischall/canvas-parent-mcp/issues/93)
+
+
+### Refactor
+
+* **skill:** move root SKILL.md into skills/, point plugin.json at ./skills/ ([#94](https://github.com/chrischall/canvas-parent-mcp/issues/94)) ([9e1061c](https://github.com/chrischall/canvas-parent-mcp/commit/9e1061ce4e0c4813dede062c0f4b0d17d41ebfe7))
+
 ## [1.1.8](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.7...v1.1.8) (2026-07-07)
 
 

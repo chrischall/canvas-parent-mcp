@@ -37,10 +37,15 @@ In the Canvas mobile app: Account → **QR for Login** (or "Pair with
 Observer/QR Login"), scan it with any camera to get the URL it encodes
 (`https://sso.canvaslms.com/canvas/login?domain=...&code=...`). Exchange it
 once for OAuth credentials with the helper this same repo ships (no MCP
-server needs to be *running* — it's a one-off CLI):
+server needs to be *running* — it's a one-off CLI).
+
+It prints four `NAME=value` lines to stdout
+(`CANVAS_BASE_URL`/`CANVAS_CLIENT_ID`/`CANVAS_CLIENT_SECRET`/`CANVAS_REFRESH_TOKEN`)
+— **export them into the shell**, since the next `curl` reads them as env
+vars and this step can't be skipped:
 
 ```sh
-npx canvas-parent-mcp-qr-login "<qr-url>"   # prints CANVAS_CLIENT_ID/SECRET/REFRESH_TOKEN
+eval "$(npx canvas-parent-mcp-qr-login "<qr-url>" | sed 's/^/export /')"
 ```
 
 Then mint (and later re-mint) a short-lived access token from the refresh

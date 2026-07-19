@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.0...v1.2.1) (2026-07-19)
+
+
+### Documentation
+
+* replace duplicated fleet policy with a pointer ([#96](https://github.com/chrischall/canvas-parent-mcp/issues/96)) ([a44de7b](https://github.com/chrischall/canvas-parent-mcp/commit/a44de7b72b2184094c6c9f1561c73b43b86b585c))
+
 ## [1.2.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.1.8...v1.2.0) (2026-07-13)
 
 

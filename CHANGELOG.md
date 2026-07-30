@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.1...v1.2.2) (2026-07-30)
+
+
+### Bug Fixes
+
+* **deps:** bump @fetchproxy/* to 1.7.0 and @chrischall/mcp-utils to 0.14.0 ([#103](https://github.com/chrischall/canvas-parent-mcp/issues/103)) ([14fa43c](https://github.com/chrischall/canvas-parent-mcp/commit/14fa43c29d574ee0a2eea7bea10b4801af6aea9a))
+
 ## [1.2.1](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.0...v1.2.1) (2026-07-19)
 
 

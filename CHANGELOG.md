@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.4](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.3...v1.2.4) (2026-08-03)
+
+
+### Bug Fixes
+
+* **auth:** lift cookies from the tenant subdomain, not the wildcard apex ([#114](https://github.com/chrischall/canvas-parent-mcp/issues/114)) ([cd570b8](https://github.com/chrischall/canvas-parent-mcp/commit/cd570b8e4b6916f5cf91a9820c0a09d0429f0428))
+
+
+### Refactor
+
+* **auth:** rename liftersByDomain to match its actual key ([#116](https://github.com/chrischall/canvas-parent-mcp/issues/116)) ([8970c18](https://github.com/chrischall/canvas-parent-mcp/commit/8970c18fffddb6eee8e55b29c5106eb3e5a8f004)), closes [#115](https://github.com/chrischall/canvas-parent-mcp/issues/115)
+
 ## [1.2.3](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.2...v1.2.3) (2026-08-03)
 
 

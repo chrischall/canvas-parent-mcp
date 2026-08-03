@@ -206,9 +206,13 @@ const liftersByDomain = new Map<string, SessionLifter>();
  * Returns undefined for a self-hosted install, where the host IS the domain.
  */
 function storageSubdomainFor(declaredDomain: string, baseHost: string): string | undefined {
+  // Only two cases exist, because `declaredDomain` is derived FROM `baseHost`
+  // a few lines up: either it collapsed to the instructure.com wildcard (so
+  // baseHost ends with `.instructure.com`), or it is baseHost itself. A
+  // `endsWith` guard here would be a third branch that cannot be reached, and
+  // an untestable branch is worse than an asserted invariant.
   if (baseHost === declaredDomain) return undefined;
-  const suffix = `.${declaredDomain}`;
-  return baseHost.endsWith(suffix) ? baseHost.slice(0, -suffix.length) : undefined;
+  return baseHost.slice(0, -(declaredDomain.length + 1));
 }
 
 function lifterFor(declaredDomain: string, baseHost: string): SessionLifter {

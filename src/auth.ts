@@ -180,16 +180,19 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
 }
 
 /**
- * One lifter per declared domain, built lazily and reused.
+ * One lifter per resolved tenant HOST, built lazily and reused.
+ *
+ * Keyed on the host, not the declared domain: every *.instructure.com tenant
+ * declares the same wildcard but holds its own host-only cookies, so a
+ * domain-keyed map would hand the second tenant the first one's lifter.
  *
  * The scope is not static — self-hosted Canvas declares its literal hostname
- * while *.instructure.com tenants share one wildcard — so the lifter cannot be
- * a module-level constant. Caching is load-bearing rather than an
- * optimization: `createSessionLifter` single-flights concurrent calls, and
- * that only helps if renewals share ONE lifter instead of constructing a fresh
- * one per call.
+ * while hosted tenants share the wildcard — so the lifter cannot be a
+ * module-level constant. Caching is load-bearing rather than an optimization:
+ * `createSessionLifter` single-flights concurrent calls, and that only helps
+ * if renewals share ONE lifter instead of constructing a fresh one per call.
  */
-const liftersByDomain = new Map<string, SessionLifter>();
+const liftersByHost = new Map<string, SessionLifter>();
 
 /**
  * Split a tenant host into the declared domain and the subdomain that actually
@@ -220,7 +223,7 @@ function lifterFor(declaredDomain: string, baseHost: string): SessionLifter {
   // different cookies, so caching by domain alone would hand the second
   // tenant the first one's lifter.
   const subdomain = storageSubdomainFor(declaredDomain, baseHost);
-  let lift = liftersByDomain.get(baseHost);
+  let lift = liftersByHost.get(baseHost);
   if (!lift) {
     lift = createSessionLifter({
       serverName: pkg.name,
@@ -234,7 +237,7 @@ function lifterFor(declaredDomain: string, baseHost: string): SessionLifter {
         captureHeaders: [],
       },
     });
-    liftersByDomain.set(baseHost, lift);
+    liftersByHost.set(baseHost, lift);
   }
   return lift;
 }

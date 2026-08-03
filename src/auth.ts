@@ -55,7 +55,7 @@
 //   - `loadAccount()` (the existing env-var resolver) is reused as-is so
 //     the legacy paths keep working unchanged.
 
-import { bootstrap } from '@fetchproxy/bootstrap';
+import { createSessionLifter, type SessionLifter } from '@fetchproxy/bootstrap';
 import { classifyBridgeError, FetchproxyBridgeDownError } from '@fetchproxy/server';
 import { readEnvVar } from '@chrischall/mcp-utils';
 import { loadAccount, type Account, type SessionAccount } from './config.js';
@@ -186,9 +186,22 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
  * one-shot bridge, reads the declared cookies, and closes it — fetchproxy is
  * not in the request hot path, only the renewal path.
  */
-async function liftBrowserCookie(declaredDomain: string, baseHost: string): Promise<string> {
-  try {
-    const session = await bootstrap({
+/**
+ * One lifter per declared domain, built lazily and reused.
+ *
+ * The scope is not static — self-hosted Canvas declares its literal hostname
+ * while *.instructure.com tenants share one wildcard — so the lifter cannot be
+ * a module-level constant. Caching is load-bearing rather than an
+ * optimization: `createSessionLifter` single-flights concurrent calls, and
+ * that only helps if renewals share ONE lifter instead of constructing a fresh
+ * one per call.
+ */
+const liftersByDomain = new Map<string, SessionLifter>();
+
+function lifterFor(declaredDomain: string): SessionLifter {
+  let lift = liftersByDomain.get(declaredDomain);
+  if (!lift) {
+    lift = createSessionLifter({
       serverName: pkg.name,
       version: pkg.version,
       domains: [declaredDomain],
@@ -199,6 +212,14 @@ async function liftBrowserCookie(declaredDomain: string, baseHost: string): Prom
         captureHeaders: [],
       },
     });
+    liftersByDomain.set(declaredDomain, lift);
+  }
+  return lift;
+}
+
+async function liftBrowserCookie(declaredDomain: string, baseHost: string): Promise<string> {
+  try {
+    const session = await lifterFor(declaredDomain)();
 
     const canvasSession = session.cookies['canvas_session'];
     const pseudoCreds = session.cookies['pseudonym_credentials'];

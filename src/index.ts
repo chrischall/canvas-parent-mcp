@@ -54,7 +54,7 @@ await runMcp({
     (server) => {
       if (resolved) {
         const client = new CanvasClient(resolved.account, {
-          preloaded: resolved.preloaded,
+          refreshSession: resolved.refresh,
         });
         registerProfileTools(server, client);
         registerObserveeTools(server, client);

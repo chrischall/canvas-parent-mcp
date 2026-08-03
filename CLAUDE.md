@@ -27,7 +27,7 @@ src/
   index.ts            # MCP server entry — loads dotenv, runs resolveAuth(), builds client, registers all tools
   auth.ts             # resolveAuth(): four-path priority (token → OAuth → session-scrape → fetchproxy → error). Template for sibling MCPs
   config.ts           # loadAccount(env) → discriminated union Account = TokenAccount | SessionAccount | OAuthAccount
-  client.ts           # CanvasClient: auth+401-retry, pagination, download. Custom error types. Accepts `preloaded` cookie from fetchproxy path
+  client.ts           # CanvasClient: auth+401-retry, pagination, download. Custom error types. Accepts a `refreshSession` browser lift from the fetchproxy path
   session-login.ts    # POSTs /login/canvas form, harvests pseudonym_credentials cookie (legacy path 3)
   qr-login.ts         # Mobile QR → mobile_verify.json → authorization_code exchange → OAuth tokens (bootstraps path 2)
   qr-login-cli.ts     # Thin CLI wrapper around qr-login (printed as env vars)
@@ -89,10 +89,10 @@ Declared domain is `instructure.com` for any `*.instructure.com` Canvas tenant (
 |---|---|---|
 | `token` | `Authorization: Bearer <token>`. No refresh. | 401 throws `TokenExpiredError('token')` immediately. |
 | `session` (env-var) | POST `/login/canvas` form, harvest `pseudonym_credentials` cookie. Re-mints on 401. | If the login response lacks `pseudonym_credentials`, the helper throws `SessionLoginError` with a hint (wrong creds, SSO redirect, or locked account). |
-| `session` (fetchproxy) | Cookies preloaded from browser; no form login. | 401 throws `TokenExpiredError('session')` immediately — re-sign-in happens in the browser, not by re-running a form login with empty creds. |
+| `session` (fetchproxy) | Cookies lifted from the browser per mint; no form login. | 401 re-lifts the browser session and replays once. Only when that lift also fails does it surface — a form login with empty creds is never attempted. |
 | `oauth` | `grant_type=refresh_token` against `/login/oauth2/token`. Refreshes proactively 60s before `expires_in`, reactively on 401. | Refresh failure throws `TokenExpiredError('oauth')` with status + first 200 chars of the error body. |
 
-`CanvasClient.authedFetch` routes every authed request through a shared `CookieSessionManager` (`@chrischall/mcp-utils/session`): it single-flights the initial `login()`, and on a 401 flagged by `isExpired` re-mints + replays the request exactly once. token + fetchproxy-session 401s aren't flagged as expired (`canReauth()` is false), so they pass back as a 401 Response that `doRawRequest`/`download` map to `TokenExpiredError`; legacy session + oauth get the one forced re-auth. The manager owns the single-flight semaphore and clear-on-settle (a rejected login never sticks). oauth's *proactive* 60s-before-expiry refresh isn't response-driven, so it lives in `proactivelyExpire()`, which `invalidate()`s the manager when the live token is inside the skew window.
+`CanvasClient.authedFetch` routes every authed request through a shared `CookieSessionManager` (`@chrischall/mcp-utils/session`): it single-flights the initial `login()`, and on a 401 flagged by `isExpired` re-mints + replays the request exactly once. token 401s aren't flagged as expired (`canReauth()` is false), so they pass back as a 401 Response that `doRawRequest`/`download` map to `TokenExpiredError`; legacy session, oauth, and fetchproxy-session get the one forced re-auth — for fetchproxy that re-auth is a fresh browser lift rather than a form POST. The manager owns the single-flight semaphore and clear-on-settle (a rejected login never sticks). oauth's *proactive* 60s-before-expiry refresh isn't response-driven, so it lives in `proactivelyExpire()`, which `invalidate()`s the manager when the live token is inside the skew window.
 
 ## Tools
 
@@ -174,7 +174,7 @@ write-verification, transport archetypes, testing traps) live in
 - **ESM + NodeNext:** imports must use `.js` extensions even for `.ts` sources (e.g. `import { db } from './db.js'`).
 - **stdio transport:** server logs to **stderr** only — stdout is reserved for JSON-RPC. `dotenv` is loaded with `quiet: true` for the same reason.
 - **Session-scrape mode requires direct Canvas auth:** if the login page omits `authenticity_token` or redirects to an external IdP, `SessionLoginError` is thrown with a SSO/2FA hint. There is no fallback — use the fetchproxy fallback or OAuth mode instead.
-- **fetchproxy 401s are terminal:** when the auth came from `@fetchproxy/bootstrap`, the synthesized SessionAccount has empty username/password and the client can't re-mint cookies on a 401 — it throws `TokenExpiredError('session')` immediately. Re-sign-in happens in the user's browser, not by re-running the form login.
+- **fetchproxy 401s renew, they don't dead-end:** the synthesized SessionAccount has empty username/password, so the client cannot re-mint via the form login — instead `refresh` re-reads the signed-in browser tab and the request replays once. `canReauth()` counts a lift as re-auth capability. Only a lift that itself fails (the user is signed out in the browser too) surfaces `TokenExpiredError('session')`. Capturing the cookie once at startup — the pre-fix shape — is what made a 401 terminal and a restart the only cure.
 - **QR login flow:** `parseQrLoginUrl` only accepts `https://sso[.beta|.test].canvaslms.com/canvas/login?domain=...&code=...`. `mobile_verify.json` must return `authorized: true` plus mobile client credentials.
 - **Bundling:** `dist/bundle.js` is the MCPB / `manifest.json` entry point (single-file via esbuild, with `dotenv` external). `dist/index.js` is the npm/`bin` entry. `npm run build` produces both.
 - **vitest excludes:** `src/index.ts`, `src/qr-login-cli.ts`, and `src/session-login-cli.ts` are excluded from coverage. The last one is currently aspirational (no such file exists) — leave the exclude in until it does or until a coverage failure forces a cleanup.

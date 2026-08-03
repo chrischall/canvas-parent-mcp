@@ -214,11 +214,11 @@ describe('CanvasClient.request (session mode)', () => {
   });
 });
 
-describe('CanvasClient (session mode, preloaded cookie from fetchproxy)', () => {
-  // When the fetchproxy fallback is the auth source, we hand the client a
-  // pre-seeded cookie + an account with empty username/password. The client
-  // must skip the form login and surface 401s directly (re-sign-in happens
-  // in the browser, not by re-running a login form with empty creds).
+describe('CanvasClient (session mode, browser lift from fetchproxy)', () => {
+  // When the fetchproxy fallback is the auth source the client gets a lift
+  // function plus an account with empty username/password. It must skip the
+  // form login and — the part that used to be missing — re-lift on expiry
+  // rather than treating the 401 as terminal.
 
   const fetchproxyAccount = (): Account => ({
     mode: 'session',
@@ -228,29 +228,61 @@ describe('CanvasClient (session mode, preloaded cookie from fetchproxy)', () => 
     password: '',
   });
 
-  it('uses the preloaded cookie on the first request without invoking sessionLogin', async () => {
+  it('lifts the cookie on the first request without invoking sessionLogin', async () => {
     const sessionLoginMock = vi.fn();
+    const refreshSession = vi.fn(async () => 'canvas_session=cs; pseudonym_credentials=pc');
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({ id: 1 }));
-    const c = new CanvasClient(fetchproxyAccount(), {
-      sessionLogin: sessionLoginMock,
-      preloaded: { cookie: 'canvas_session=cs; pseudonym_credentials=pc' },
-    });
+    const c = new CanvasClient(fetchproxyAccount(), { sessionLogin: sessionLoginMock, refreshSession });
     expect(await c.request('/x')).toEqual({ id: 1 });
     expect(sessionLoginMock).not.toHaveBeenCalled();
+    expect(refreshSession).toHaveBeenCalledTimes(1);
     const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
     expect(headers.Cookie).toBe('canvas_session=cs; pseudonym_credentials=pc');
     expect(headers.Authorization).toBeUndefined();
   });
 
-  it('throws TokenExpiredError on 401 without trying to re-login (no creds to use)', async () => {
+  // The bug: the lifted cookie was captured once and `canReauth()` returned
+  // false in this mode, so a 401 was terminal. The browser still held a live
+  // session — nothing ever re-read it, and only a restart recovered.
+  it('re-lifts the browser session on a 401 and replays once', async () => {
     const sessionLoginMock = vi.fn();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 401 }));
-    const c = new CanvasClient(fetchproxyAccount(), {
-      sessionLogin: sessionLoginMock,
-      preloaded: { cookie: 'canvas_session=cs; pseudonym_credentials=pc' },
-    });
-    await expect(c.request('/x')).rejects.toBeInstanceOf(TokenExpiredError);
+    const refreshSession = vi
+      .fn<() => Promise<string>>()
+      .mockResolvedValueOnce('canvas_session=stale')
+      .mockResolvedValueOnce('canvas_session=fresh');
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+      .mockResolvedValueOnce(jsonRes({ id: 2 }));
+    const c = new CanvasClient(fetchproxyAccount(), { sessionLogin: sessionLoginMock, refreshSession });
+    expect(await c.request('/x')).toEqual({ id: 2 });
+    expect(refreshSession).toHaveBeenCalledTimes(2);
     expect(sessionLoginMock).not.toHaveBeenCalled();
+    const retry = (fetchMock.mock.calls[1][1] as RequestInit).headers as Record<string, string>;
+    expect(retry.Cookie).toBe('canvas_session=fresh');
+  });
+
+  it('gives up after ONE re-lift when the browser session is genuinely dead', async () => {
+    const refreshSession = vi.fn(async () => 'canvas_session=dead');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 401 }));
+    const c = new CanvasClient(fetchproxyAccount(), { sessionLogin: vi.fn(), refreshSession });
+    await expect(c.request('/x')).rejects.toBeInstanceOf(TokenExpiredError);
+    expect(refreshSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('without a lift, session mode still uses the form login (the env path)', async () => {
+    // The lift is additive: an account carrying real credentials must keep
+    // minting via sessionLogin rather than reaching for the browser.
+    const sessionLoginMock = vi.fn().mockResolvedValue({ cookie: 'canvas_session=form' });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({ id: 3 }));
+    const c = new CanvasClient(
+      { ...fetchproxyAccount(), username: 'u', password: 'p' },
+      { sessionLogin: sessionLoginMock },
+    );
+    expect(await c.request('/x')).toEqual({ id: 3 });
+    expect(sessionLoginMock).toHaveBeenCalledTimes(1);
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(headers.Cookie).toBe('canvas_session=form');
   });
 });
 

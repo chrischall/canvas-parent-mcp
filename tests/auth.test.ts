@@ -59,7 +59,7 @@ describe('resolveAuth', () => {
         token: 'tok_abc',
       });
       expect(result.source).toBe('env');
-      expect(result.preloaded).toBeUndefined();
+      expect(result.refresh).toBeUndefined();
       expect(bootstrapMock).not.toHaveBeenCalled();
     });
 
@@ -115,7 +115,7 @@ describe('resolveAuth', () => {
         password: 'hunter2',
       });
       expect(result.source).toBe('env');
-      expect(result.preloaded).toBeUndefined();
+      expect(result.refresh).toBeUndefined();
       expect(bootstrapMock).not.toHaveBeenCalled();
     });
 
@@ -145,6 +145,7 @@ describe('resolveAuth', () => {
       });
 
       const result = await resolveAuth();
+      const cookie = await result.refresh!();
 
       expect(bootstrapMock).toHaveBeenCalledTimes(1);
       const opts = bootstrapMock.mock.calls[0][0] as {
@@ -164,7 +165,7 @@ describe('resolveAuth', () => {
       expect(result.source).toBe('fetchproxy');
       expect(result.account.mode).toBe('session');
       expect(result.account.baseUrl).toBe('https://cms.instructure.com');
-      expect(result.preloaded?.cookie).toBe('canvas_session=cs_val; pseudonym_credentials=pc_val');
+      expect(cookie).toBe('canvas_session=cs_val; pseudonym_credentials=pc_val');
     });
 
     it('declares the literal hostname when CANVAS_BASE_URL is not on *.instructure.com', async () => {
@@ -176,7 +177,7 @@ describe('resolveAuth', () => {
         capturedHeaders: {},
       });
 
-      await resolveAuth();
+      await (await resolveAuth()).refresh!();
 
       const opts = bootstrapMock.mock.calls[0][0] as { domains: string[] };
       expect(opts.domains).toEqual(['canvas.private-school.edu']);
@@ -191,7 +192,7 @@ describe('resolveAuth', () => {
         capturedHeaders: {},
       });
 
-      await resolveAuth();
+      await (await resolveAuth()).refresh!();
 
       const opts = bootstrapMock.mock.calls[0][0] as { domains: string[] };
       expect(opts.domains).toEqual(['instructure.com']);
@@ -204,8 +205,8 @@ describe('resolveAuth', () => {
         sessionStorage: {},
         capturedHeaders: {},
       });
-      await expect(resolveAuth()).rejects.toThrow(/required cookies not found/);
-      await expect(resolveAuth()).rejects.toThrow(/Sign into.*Canvas/i);
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/required cookies not found/);
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/Sign into.*Canvas/i);
     });
 
     it('throws when pseudonym_credentials cookie is missing', async () => {
@@ -215,7 +216,7 @@ describe('resolveAuth', () => {
         sessionStorage: {},
         capturedHeaders: {},
       });
-      await expect(resolveAuth()).rejects.toThrow(/required cookies not found/);
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/required cookies not found/);
     });
 
     it('throws when both required cookies are missing', async () => {
@@ -225,17 +226,17 @@ describe('resolveAuth', () => {
         sessionStorage: {},
         capturedHeaders: {},
       });
-      await expect(resolveAuth()).rejects.toThrow(/required cookies not found/);
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/required cookies not found/);
     });
 
     it('wraps bootstrap() errors with actionable context', async () => {
       bootstrapMock.mockRejectedValue(new Error('extension offline'));
-      await expect(resolveAuth()).rejects.toThrow(/fetchproxy fallback failed: extension offline/);
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/fetchproxy lift failed: extension offline/);
     });
 
     it('handles non-Error rejections from bootstrap()', async () => {
       bootstrapMock.mockRejectedValue('plain string failure');
-      await expect(resolveAuth()).rejects.toThrow(/fetchproxy fallback failed: plain string failure/);
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/fetchproxy lift failed: plain string failure/);
     });
 
     it('surfaces FetchproxyBridgeDownError.hint verbatim when the SW retry exhausts', async () => {
@@ -252,8 +253,8 @@ describe('resolveAuth', () => {
       });
       bootstrapMock.mockRejectedValue(downErr);
 
-      await expect(resolveAuth()).rejects.toThrow(/fetchproxy bridge is down/);
-      await expect(resolveAuth()).rejects.toThrow(downErr.hint.slice(0, 20));
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/fetchproxy bridge is down/);
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(downErr.hint.slice(0, 20));
     });
 
     it('uses the resolved hostname as cache name when CANVAS_NAME is unset', async () => {
@@ -265,6 +266,7 @@ describe('resolveAuth', () => {
         capturedHeaders: {},
       });
       const result = await resolveAuth();
+      const cookie = await result.refresh!();
       expect(result.account.name).toBe('uiowa.instructure.com');
     });
 
@@ -277,6 +279,7 @@ describe('resolveAuth', () => {
         capturedHeaders: {},
       });
       const result = await resolveAuth();
+      const cookie = await result.refresh!();
       expect(result.account.name).toBe('My Canvas');
     });
   });
@@ -307,8 +310,9 @@ describe('resolveAuth', () => {
           sessionStorage: {},
           capturedHeaders: {},
         });
-        await resolveAuth();
-        expect(bootstrapMock).toHaveBeenCalled();
+        const result = await resolveAuth();
+        expect(result.source).toBe('fetchproxy');
+        expect(typeof result.refresh).toBe('function');
       },
     );
 
@@ -324,8 +328,9 @@ describe('resolveAuth', () => {
           sessionStorage: {},
           capturedHeaders: {},
         });
-        await resolveAuth();
-        expect(bootstrapMock).toHaveBeenCalled();
+        const result = await resolveAuth();
+        expect(result.source).toBe('fetchproxy');
+        expect(typeof result.refresh).toBe('function');
       },
     );
 

@@ -11,12 +11,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // fingerprint, and that we don't preempt env-var auth when it's set.
 
 const bootstrapMock = vi.fn();
+// CONSTRUCTION is spied separately from invocation. Without that split the
+// mock cannot tell a cached lifter from a freshly-built one, so the per-domain
+// cache — which is what preserves the library's single-flighting — would have
+// no test holding it in place.
+const lifterFactoryMock = vi.fn((opts: unknown) => () => bootstrapMock(opts));
 // `createSessionLifter(opts)` returns a lift; invoking THAT reads the browser.
 // Forwarding the construction opts into the call keeps every existing
 // assertion on `bootstrapMock.mock.calls[0][0]` meaningful — it still inspects
 // the declared scope, just captured at construction rather than per call.
 vi.mock('@fetchproxy/bootstrap', () => ({
-  createSessionLifter: (opts: unknown) => () => bootstrapMock(opts),
+  createSessionLifter: (opts: unknown) => lifterFactoryMock(opts),
 }));
 
 import { resolveAuth } from '../src/auth.js';
@@ -43,6 +48,7 @@ describe('resolveAuth', () => {
     }
     process.env.CANVAS_BASE_URL = 'https://cms.instructure.com';
     bootstrapMock.mockReset();
+    lifterFactoryMock.mockClear();
   });
 
   afterEach(() => {
@@ -170,6 +176,33 @@ describe('resolveAuth', () => {
       expect(result.account.mode).toBe('session');
       expect(result.account.baseUrl).toBe('https://cms.instructure.com');
       expect(cookie).toBe('canvas_session=cs_val; pseudonym_credentials=pc_val');
+    });
+
+    // The per-domain cache preserves createSessionLifter's single-flighting:
+    // the library dedupes concurrent calls PER LIFTER, so constructing a fresh
+    // one per mint would compile fine and silently hand the behavior back.
+    // Assert on construction count, not just on reads.
+    it('builds one lifter per domain and reuses it across mints', async () => {
+      // A domain no other test touches: `liftersByDomain` is module-level and
+      // persists across cases, so sharing a host would count a construction
+      // from an earlier test and make this assertion meaningless.
+      process.env.CANVAS_BASE_URL = 'https://canvas.cache-probe.example.edu';
+      bootstrapMock.mockResolvedValue({
+        cookies: { canvas_session: 'cs', pseudonym_credentials: 'pc' },
+        localStorage: {},
+        sessionStorage: {},
+        capturedHeaders: {},
+      });
+
+      const { refresh } = await resolveAuth();
+      await refresh!();
+      await refresh!();
+      await refresh!();
+
+      // Three browser reads...
+      expect(bootstrapMock).toHaveBeenCalledTimes(3);
+      // ...through ONE lifter.
+      expect(lifterFactoryMock).toHaveBeenCalledTimes(1);
     });
 
     it('declares the literal hostname when CANVAS_BASE_URL is not on *.instructure.com', async () => {

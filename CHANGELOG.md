@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.3](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.2...v1.2.3) (2026-08-03)
+
+
+### Bug Fixes
+
+* **auth:** renew the browser session instead of treating a 401 as terminal ([#108](https://github.com/chrischall/canvas-parent-mcp/issues/108)) ([665d989](https://github.com/chrischall/canvas-parent-mcp/commit/665d9892825d9fb5e2bfdde4f495413f94094246))
+
+
+### Refactor
+
+* **auth:** collapse the hand-rolled lifter onto createSessionLifter ([#111](https://github.com/chrischall/canvas-parent-mcp/issues/111)) ([16d8e5e](https://github.com/chrischall/canvas-parent-mcp/commit/16d8e5ea60dd7b137a596fd7e66a4a63b865ba72))
+
 ## [1.2.2](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.1...v1.2.2) (2026-07-30)
 
 

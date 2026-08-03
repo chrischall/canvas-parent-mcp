@@ -67,14 +67,20 @@ export interface ResolvedAuth {
    * Account config the client should treat as authoritative. For paths 1-3
    * this is a fully-loaded Account from env. For the fetchproxy path it's
    * a synthesized `SessionAccount` with empty credentials — the client sees
-   * `refresh` and skips the form-login because we hand it a browser lift
-   * cookies.
+   * `refresh` and mints through the browser instead of the form-login.
    */
   account: Account;
   /**
-   * For the fetchproxy path: the cookie header we pulled from the browser.
-   * The client uses this in place of running `sessionLogin()`. For env-var
-   * paths this is undefined and the client follows its normal flow.
+   * For the fetchproxy path: lifts a fresh Canvas session cookie out of the
+   * user's signed-in tab, returning the `Cookie` header value. The client
+   * calls this in place of `sessionLogin()` — lazily on the first mint, and
+   * again on every 401.
+   *
+   * A function, not a captured cookie, on purpose: a value captured once made
+   * a 401 terminal, because the synthesized account has no credentials to
+   * re-mint with. Re-reading the browser is the only renewal path.
+   *
+   * Undefined for the env-var paths, which follow their normal flow.
    */
   refresh?: () => Promise<string>;
   /** Which path produced this. Diagnostics only — callers should not branch. */

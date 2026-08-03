@@ -59,7 +59,7 @@ describe('resolveAuth', () => {
         token: 'tok_abc',
       });
       expect(result.source).toBe('env');
-      expect(result.preloaded).toBeUndefined();
+      expect(result.refresh).toBeUndefined();
       expect(bootstrapMock).not.toHaveBeenCalled();
     });
 
@@ -115,7 +115,7 @@ describe('resolveAuth', () => {
         password: 'hunter2',
       });
       expect(result.source).toBe('env');
-      expect(result.preloaded).toBeUndefined();
+      expect(result.refresh).toBeUndefined();
       expect(bootstrapMock).not.toHaveBeenCalled();
     });
 

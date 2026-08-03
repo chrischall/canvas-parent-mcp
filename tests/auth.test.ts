@@ -183,7 +183,7 @@ describe('resolveAuth', () => {
     // one per mint would compile fine and silently hand the behavior back.
     // Assert on construction count, not just on reads.
     it('builds one lifter per domain and reuses it across mints', async () => {
-      // A domain no other test touches: `liftersByDomain` is module-level and
+      // A host no other test touches: `liftersByHost` is module-level and
       // persists across cases, so sharing a host would count a construction
       // from an earlier test and make this assertion meaningless.
       process.env.CANVAS_BASE_URL = 'https://canvas.cache-probe.example.edu';

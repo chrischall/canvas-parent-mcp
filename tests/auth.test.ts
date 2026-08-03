@@ -205,6 +205,54 @@ describe('resolveAuth', () => {
       expect(lifterFactoryMock).toHaveBeenCalledTimes(1);
     });
 
+
+    // Canvas tenants live on per-district subdomains and declare the
+    // *.instructure.com wildcard so any district matches. But the declared
+    // DOMAIN is not the host the cookies live on: canvas_session /
+    // pseudonym_credentials are host-only on the tenant, and the extension
+    // resolves the storage origin from domain + storageSubdomain. Without the
+    // subdomain the lift read `https://instructure.com` — an apex that holds
+    // nothing — and reported the user signed out while they were signed in.
+    //
+    // Verified against a live bridge: apex found no cookies; cms.instructure.com
+    // found both.
+    const liftOpts = () =>
+      bootstrapMock.mock.calls[0][0] as { domains: string[]; storageSubdomain?: string };
+
+    const okCookies = () => {
+      bootstrapMock.mockResolvedValue({
+        cookies: { canvas_session: 'cs', pseudonym_credentials: 'pc' },
+        localStorage: {},
+        sessionStorage: {},
+        capturedHeaders: {},
+      });
+    };
+
+    it('reads cookies from the tenant subdomain, not the wildcard apex', async () => {
+      process.env.CANVAS_BASE_URL = 'https://cms.instructure.com';
+      okCookies();
+      await (await resolveAuth()).refresh!();
+      // The wildcard stays, so any district matches without a re-pair...
+      expect(liftOpts().domains).toEqual(['instructure.com']);
+      // ...but the READ targets the tenant that actually holds the cookies.
+      expect(liftOpts().storageSubdomain).toBe('cms');
+    });
+
+    it('handles a multi-label tenant subdomain', async () => {
+      process.env.CANVAS_BASE_URL = 'https://k12.cms.instructure.com';
+      okCookies();
+      await (await resolveAuth()).refresh!();
+      expect(liftOpts().storageSubdomain).toBe('k12.cms');
+    });
+
+    it('omits the subdomain for a self-hosted Canvas, where host IS the domain', async () => {
+      process.env.CANVAS_BASE_URL = 'https://canvas.private-school.edu';
+      okCookies();
+      await (await resolveAuth()).refresh!();
+      expect(liftOpts().domains).toEqual(['canvas.private-school.edu']);
+      expect(liftOpts().storageSubdomain).toBeUndefined();
+    });
+
     it('declares the literal hostname when CANVAS_BASE_URL is not on *.instructure.com', async () => {
       process.env.CANVAS_BASE_URL = 'https://canvas.private-school.edu';
       bootstrapMock.mockResolvedValue({

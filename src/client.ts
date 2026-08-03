@@ -47,32 +47,39 @@ interface CanvasAuth {
 export class CanvasClient {
   private account: Account;
   private sessionLoginFn: SessionLoginFn;
-  private preloadedCookie: string | null;
+  /**
+   * fetchproxy lift. Called on the first login AND on every renewal, which is
+   * what keeps the path alive once the browser cookie lapses.
+   */
+  private refreshSession: (() => Promise<string>) | null;
   private auth: CookieSessionManager<CanvasAuth>;
   /** Lazily-built shared refresh_token exchanger (oauth mode only). */
   private oauthRefresh: ReturnType<typeof createOAuth2Refresher> | null = null;
 
   /**
-   * `preloaded` is the fetchproxy escape hatch: when set, the client uses
-   * the supplied cookie header as-if it had just successfully run
-   * `sessionLogin()`. On a 401 it falls back to the lazy login flow only if
-   * usable credentials are present on the account — otherwise the 401
-   * surfaces as a TokenExpiredError (re-sign-in happens in the browser, not
-   * by re-running a form login with empty creds).
+   * `refreshSession` is the fetchproxy escape hatch: when set, it REPLACES
+   * `sessionLogin()` as the way this client mints a session cookie. It is
+   * called lazily on the first request and again on every 401, so a lapsed
+   * browser cookie recovers by re-reading the tab instead of dead-ending.
+   *
+   * It must re-read the browser each time rather than return a captured
+   * value — that capture-once shape is precisely what made a 401 terminal
+   * here, with a restart the only cure.
    */
   constructor(
     account: Account,
-    opts: { sessionLogin?: SessionLoginFn; preloaded?: { cookie: string } } = {},
+    opts: { sessionLogin?: SessionLoginFn; refreshSession?: () => Promise<string> } = {},
   ) {
     this.account = account;
     this.sessionLoginFn = opts.sessionLogin ?? defaultSessionLogin;
-    this.preloadedCookie = opts.preloaded?.cookie ?? null;
+    this.refreshSession = opts.refreshSession ?? null;
     this.auth = new CookieSessionManager<CanvasAuth>({
       login: () => this.login(),
-      // Reactive expiry: only a 401 in a mode that can re-mint warrants a replay.
-      // token mode and fetchproxy-session (empty creds) can't re-auth here — their
-      // 401 falls through as a Response and `mapStatus` turns it into a
-      // TokenExpiredError so the user is told to re-sign-in / re-config.
+      // Reactive expiry: only a 401 in a mode that can re-mint warrants a
+      // replay. token mode still can't (no refresh path), and a session
+      // account with neither a lift nor credentials still can't — those 401s
+      // fall through as a Response and `mapStatus` turns them into a
+      // TokenExpiredError.
       isExpired: (res) => res.status === 401 && this.canReauth(),
     });
   }
@@ -193,10 +200,11 @@ export class CanvasClient {
   private canReauth(): boolean {
     const acct = this.account;
     if (acct.mode === 'oauth') return true;
-    // session: only when we hold real form credentials. The fetchproxy path
-    // synthesizes a SessionAccount with empty username/password and a preloaded
-    // cookie — it can't re-mint, so its 401 is terminal.
-    if (acct.mode === 'session') return !!acct.username && !!acct.password;
+    // session: either a browser lift (fetchproxy) or real form credentials
+    // can re-mint. The lift is the fetchproxy path's re-auth — before it
+    // existed, that path synthesized empty username/password and a captured
+    // cookie, so its 401 was terminal and only a restart recovered.
+    if (acct.mode === 'session') return !!this.refreshSession || (!!acct.username && !!acct.password);
     return false; // token mode: no refresh path.
   }
 
@@ -207,11 +215,10 @@ export class CanvasClient {
       return { headers: { Authorization: `Bearer ${acct.token}` } };
     }
     if (acct.mode === 'session') {
-      // fetchproxy path: a preloaded cookie stands in for a form login on the
-      // first ensure(). (A 401 here is terminal — canReauth() is false — so the
-      // manager never asks login() to re-mint with empty creds.)
-      if (this.preloadedCookie !== null) {
-        return { headers: { Cookie: this.preloadedCookie } };
+      // fetchproxy path: re-read the browser instead of posting a form login.
+      // Runs on every mint, not just the first, so an expiry renews.
+      if (this.refreshSession !== null) {
+        return { headers: { Cookie: await this.refreshSession() } };
       }
       return { headers: { Cookie: await this.mintSessionCookie(acct) } };
     }

@@ -67,7 +67,7 @@ export interface ResolvedAuth {
    * Account config the client should treat as authoritative. For paths 1-3
    * this is a fully-loaded Account from env. For the fetchproxy path it's
    * a synthesized `SessionAccount` with empty credentials — the client sees
-   * `preloaded` and skips the form-login because we hand it pre-seeded
+   * `refresh` and skips the form-login because we hand it a browser lift
    * cookies.
    */
   account: Account;
@@ -76,7 +76,7 @@ export interface ResolvedAuth {
    * The client uses this in place of running `sessionLogin()`. For env-var
    * paths this is undefined and the client follows its normal flow.
    */
-  preloaded?: { cookie: string };
+  refresh?: () => Promise<string>;
   /** Which path produced this. Diagnostics only — callers should not branch. */
   source: 'env' | 'fetchproxy';
 }
@@ -122,6 +122,12 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
   }
 
   // ── Path 4: fetchproxy fallback.
+  //
+  // NOTE: the browser is NOT read here. resolveAuth() runs once at process
+  // start; the lift is handed to the client as `refresh` and runs lazily on
+  // the first request and again on every 401. A cookie captured at boot made
+  // a 401 terminal — the account has empty creds, so there was nothing to
+  // re-mint with and only a restart recovered.
   if (!fetchproxyDisabled()) {
     // CANVAS_BASE_URL is guaranteed valid here — loadAccount() validates it
     // before throwing the NO_ENV_CONFIG_MARKER error we caught above.
@@ -138,69 +144,23 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
     const name = readEnv('CANVAS_NAME') ?? baseHost;
     const cleanBaseUrl = baseUrl.replace(/\/$/, '');
 
-    try {
-      const session = await bootstrap({
-        serverName: pkg.name,
-        version: pkg.version,
-        domains: [declaredDomain],
-        declare: {
-          cookies: ['canvas_session', 'pseudonym_credentials'],
-          localStorage: [],
-          sessionStorage: [],
-          captureHeaders: [],
-        },
-      });
+    // Synthesized session account with empty creds — the client sees `refresh`
+    // and skips the form login. Cookie shape matches the legacy session-scrape
+    // path so everything downstream (Cookie header, 401 replay, downloads)
+    // keeps working.
+    const account: SessionAccount = {
+      mode: 'session',
+      name,
+      baseUrl: cleanBaseUrl,
+      username: '',
+      password: '',
+    };
 
-      const canvasSession = session.cookies['canvas_session'];
-      const pseudoCreds = session.cookies['pseudonym_credentials'];
-      if (!canvasSession || !pseudoCreds) {
-        throw new Error(
-          `required cookies not found on ${baseHost}. ` +
-            'Sign into your Canvas instance in the browser ' +
-            '(with the fetchproxy extension installed) and retry.',
-        );
-      }
-
-      const cookie = `canvas_session=${canvasSession}; pseudonym_credentials=${pseudoCreds}`;
-
-      // Synthesize a session account with empty creds — the client will see
-      // `preloaded` and skip the form login. This mirrors the cookie shape
-      // the legacy session-scrape path produces, so everything downstream
-      // (Cookie header, 401-retry, file downloads) keeps working.
-      const account: SessionAccount = {
-        mode: 'session',
-        name,
-        baseUrl: cleanBaseUrl,
-        username: '',
-        password: '',
-      };
-
-      return {
-        account,
-        preloaded: { cookie },
-        source: 'fetchproxy',
-      };
-    } catch (e) {
-      // 0.8.0+ typed-error discrimination. The fetchproxy server already
-      // retries once on SW eviction (bridgeReviveDelayMs=2000 default), so
-      // a thrown FetchproxyBridgeDownError means the retry also failed —
-      // the extension's service worker is genuinely down and the user
-      // needs to wake it. The `.hint` is the actionable copy
-      // ("click the extension toolbar icon...") that we'd otherwise have
-      // to hand-write here. Surface it verbatim so users in path 4 get
-      // the same self-service guidance as path 5.
-      if (classifyBridgeError(e) === 'bridge_down') {
-        const downErr = e as FetchproxyBridgeDownError;
-        throw new Error(
-          `Canvas auth: fetchproxy bridge is down (extension service worker unreachable after retry). ${downErr.hint}`,
-        );
-      }
-      const msg = e instanceof Error ? e.message : String(e);
-      throw new Error(
-        `Canvas auth: no CANVAS_TOKEN, CANVAS_CLIENT_*/CANVAS_REFRESH_TOKEN, or CANVAS_USERNAME/CANVAS_PASSWORD set, ` +
-          `and fetchproxy fallback failed: ${msg}`,
-      );
-    }
+    return {
+      account,
+      refresh: () => liftBrowserCookie(declaredDomain, baseHost),
+      source: 'fetchproxy',
+    };
   }
 
   // ── Path 5: nothing configured and fetchproxy explicitly disabled.
@@ -211,4 +171,54 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
       'or install the fetchproxy extension and sign into your Canvas instance ' +
       '(unset CANVAS_DISABLE_FETCHPROXY if it is set).',
   );
+}
+
+/**
+ * Lift a fresh Canvas session cookie out of the user's signed-in tab.
+ *
+ * Runs on every mint, not once at startup. `@fetchproxy/bootstrap` opens a
+ * one-shot bridge, reads the declared cookies, and closes it — fetchproxy is
+ * not in the request hot path, only the renewal path.
+ */
+async function liftBrowserCookie(declaredDomain: string, baseHost: string): Promise<string> {
+  try {
+    const session = await bootstrap({
+      serverName: pkg.name,
+      version: pkg.version,
+      domains: [declaredDomain],
+      declare: {
+        cookies: ['canvas_session', 'pseudonym_credentials'],
+        localStorage: [],
+        sessionStorage: [],
+        captureHeaders: [],
+      },
+    });
+
+    const canvasSession = session.cookies['canvas_session'];
+    const pseudoCreds = session.cookies['pseudonym_credentials'];
+    if (!canvasSession || !pseudoCreds) {
+      throw new Error(
+        `required cookies not found on ${baseHost}. ` +
+          'Sign into your Canvas instance in the browser ' +
+          '(with the fetchproxy extension installed) and retry.',
+      );
+    }
+    return `canvas_session=${canvasSession}; pseudonym_credentials=${pseudoCreds}`;
+  } catch (e) {
+    // 0.8.0+ typed-error discrimination. The fetchproxy server already retries
+    // once on SW eviction, so a thrown FetchproxyBridgeDownError means the
+    // retry also failed — the extension's service worker is genuinely down and
+    // the user needs to wake it. `.hint` is the actionable copy.
+    if (classifyBridgeError(e) === 'bridge_down') {
+      const downErr = e as FetchproxyBridgeDownError;
+      throw new Error(
+        `Canvas auth: fetchproxy bridge is down (extension service worker unreachable after retry). ${downErr.hint}`,
+      );
+    }
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      `Canvas auth: no CANVAS_TOKEN, CANVAS_CLIENT_*/CANVAS_REFRESH_TOKEN, or CANVAS_USERNAME/CANVAS_PASSWORD set, ` +
+        `and fetchproxy lift failed: ${msg}`,
+    );
+  }
 }

@@ -191,13 +191,42 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
  */
 const liftersByDomain = new Map<string, SessionLifter>();
 
-function lifterFor(declaredDomain: string): SessionLifter {
-  let lift = liftersByDomain.get(declaredDomain);
+/**
+ * Split a tenant host into the declared domain and the subdomain that actually
+ * holds the cookies.
+ *
+ * These are NOT the same thing, and conflating them is why the lift silently
+ * read nothing. Canvas declares the `instructure.com` wildcard so any district
+ * matches without a re-pair, but `canvas_session` / `pseudonym_credentials`
+ * are host-only on the tenant (`cms.instructure.com`). The extension resolves
+ * the storage origin from domain + subdomain, so declaring the wildcard alone
+ * pointed the read at `https://instructure.com` — an apex that holds nothing —
+ * and every lift reported the user signed out while they were signed in.
+ *
+ * Returns undefined for a self-hosted install, where the host IS the domain.
+ */
+function storageSubdomainFor(declaredDomain: string, baseHost: string): string | undefined {
+  // Only two cases exist, because `declaredDomain` is derived FROM `baseHost`
+  // a few lines up: either it collapsed to the instructure.com wildcard (so
+  // baseHost ends with `.instructure.com`), or it is baseHost itself. A
+  // `endsWith` guard here would be a third branch that cannot be reached, and
+  // an untestable branch is worse than an asserted invariant.
+  if (baseHost === declaredDomain) return undefined;
+  return baseHost.slice(0, -(declaredDomain.length + 1));
+}
+
+function lifterFor(declaredDomain: string, baseHost: string): SessionLifter {
+  // Key on the resolved host: two tenants share one declared domain but hold
+  // different cookies, so caching by domain alone would hand the second
+  // tenant the first one's lifter.
+  const subdomain = storageSubdomainFor(declaredDomain, baseHost);
+  let lift = liftersByDomain.get(baseHost);
   if (!lift) {
     lift = createSessionLifter({
       serverName: pkg.name,
       version: pkg.version,
       domains: [declaredDomain],
+      ...(subdomain !== undefined ? { storageSubdomain: subdomain } : {}),
       declare: {
         cookies: ['canvas_session', 'pseudonym_credentials'],
         localStorage: [],
@@ -205,7 +234,7 @@ function lifterFor(declaredDomain: string): SessionLifter {
         captureHeaders: [],
       },
     });
-    liftersByDomain.set(declaredDomain, lift);
+    liftersByDomain.set(baseHost, lift);
   }
   return lift;
 }
@@ -218,7 +247,7 @@ function lifterFor(declaredDomain: string): SessionLifter {
  */
 async function liftBrowserCookie(declaredDomain: string, baseHost: string): Promise<string> {
   try {
-    const session = await lifterFor(declaredDomain)();
+    const session = await lifterFor(declaredDomain, baseHost)();
 
     const canvasSession = session.cookies['canvas_session'];
     const pseudoCreds = session.cookies['pseudonym_credentials'];

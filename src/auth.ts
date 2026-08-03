@@ -180,13 +180,6 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
 }
 
 /**
- * Lift a fresh Canvas session cookie out of the user's signed-in tab.
- *
- * Runs on every mint, not once at startup. `@fetchproxy/bootstrap` opens a
- * one-shot bridge, reads the declared cookies, and closes it — fetchproxy is
- * not in the request hot path, only the renewal path.
- */
-/**
  * One lifter per declared domain, built lazily and reused.
  *
  * The scope is not static — self-hosted Canvas declares its literal hostname
@@ -217,6 +210,12 @@ function lifterFor(declaredDomain: string): SessionLifter {
   return lift;
 }
 
+/**
+ * Lift a fresh Canvas session cookie out of the user's signed-in tab.
+ *
+ * Runs on every mint, not once at startup — fetchproxy is not in the request
+ * hot path, only the renewal path.
+ */
 async function liftBrowserCookie(declaredDomain: string, baseHost: string): Promise<string> {
   try {
     const session = await lifterFor(declaredDomain)();

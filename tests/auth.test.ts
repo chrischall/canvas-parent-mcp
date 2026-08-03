@@ -11,8 +11,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // fingerprint, and that we don't preempt env-var auth when it's set.
 
 const bootstrapMock = vi.fn();
+// `createSessionLifter(opts)` returns a lift; invoking THAT reads the browser.
+// Forwarding the construction opts into the call keeps every existing
+// assertion on `bootstrapMock.mock.calls[0][0]` meaningful — it still inspects
+// the declared scope, just captured at construction rather than per call.
 vi.mock('@fetchproxy/bootstrap', () => ({
-  bootstrap: (...args: unknown[]) => bootstrapMock(...args),
+  createSessionLifter: (opts: unknown) => () => bootstrapMock(opts),
 }));
 
 import { resolveAuth } from '../src/auth.js';

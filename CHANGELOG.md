@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.5](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.4...v1.2.5) (2026-08-06)
+
+
+### Bug Fixes
+
+* **deps:** move to @fetchproxy/server 2.0.0 for the v3 handshake ([#122](https://github.com/chrischall/canvas-parent-mcp/issues/122)) ([fa781e3](https://github.com/chrischall/canvas-parent-mcp/commit/fa781e3508a695c751b34bf3497e6792f54c76ea))
+
 ## [1.2.4](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.3...v1.2.4) (2026-08-03)
 
 

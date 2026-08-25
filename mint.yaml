@@ -54,8 +54,12 @@ env:
 egress:
   allow:
     # Canvas is multi-tenant per district: the base URL is a *.instructure.com
-    # host (cms.instructure.com is the CMS district), and SSO redirects go to
-    # canvaslms.com. Narrow this to YOUR district's host if you prefer.
+    # host (cms.instructure.com is the CMS district). Narrow this to YOUR
+    # district's host if you prefer.
+    #
+    # sso.canvaslms.com is deliberately NOT here: the hosted server never
+    # contacts it. session-login.ts only INSPECTS a redirect's Location for
+    # that host, and qr-login.ts is the separate canvas-parent-mcp-qr-login
+    # bin, not the child this manifest configures.
     - instructure.com
     - cms.instructure.com
-    - sso.canvaslms.com

@@ -1,0 +1,61 @@
+version: 1
+name: Canvas Parent
+slug: canvas-parent
+summary: >-
+  Canvas LMS courses, assignments, grades and messages for a parent/observer.
+  The package ships TWO bins, so command.bin below is required — without it the
+  install refuses. A token or OAuth registration hosts on any tier; the
+  username/password and bridge paths need a browser and do not.
+command:
+  # REQUIRED: package.json declares canvas-parent-mcp (the server) and
+  # canvas-parent-mcp-qr-login (a local CLI). Without this the install refuses.
+  bin: canvas-parent-mcp
+env:
+  - name: CANVAS_BASE_URL
+    required: true
+    help: >-
+      Your district's Canvas host, e.g. https://cms.instructure.com. Must be an
+      https URL. Everything else is an auth mode on top of this.
+  - name: CANVAS_TOKEN
+    secret: true
+    required: false
+    help: >-
+      A Canvas personal access token (Account → Settings → New Access Token).
+      The simplest hosted auth mode; tried first.
+  - name: CANVAS_CLIENT_ID
+    required: false
+    help: OAuth client id. Use with CANVAS_CLIENT_SECRET + CANVAS_REFRESH_TOKEN.
+  - name: CANVAS_CLIENT_SECRET
+    secret: true
+    required: false
+    help: OAuth client secret. Use with CANVAS_CLIENT_ID + CANVAS_REFRESH_TOKEN.
+  - name: CANVAS_REFRESH_TOKEN
+    secret: true
+    required: false
+    help: OAuth refresh token. Use with CANVAS_CLIENT_ID + CANVAS_CLIENT_SECRET.
+  - name: CANVAS_USERNAME
+    required: false
+    help: >-
+      Canvas login email, for the session-scrape mode (direct Canvas accounts
+      only — not SSO). Prefer CANVAS_TOKEN when hosted.
+  - name: CANVAS_PASSWORD
+    secret: true
+    required: false
+    help: Canvas password, paired with CANVAS_USERNAME. Prefer CANVAS_TOKEN when hosted.
+  - name: CANVAS_NAME
+    required: false
+    help: Label for this district. Defaults to the host portion of CANVAS_BASE_URL.
+  - name: CANVAS_DISABLE_FETCHPROXY
+    required: false
+    help: >-
+      Set to 1 to disable the browser-bridge fallback, making missing
+      credentials a hard error. Recommended for a hosted registration, which has
+      no browser to fall back to.
+egress:
+  allow:
+    # Canvas is multi-tenant per district: the base URL is a *.instructure.com
+    # host (cms.instructure.com is the CMS district), and SSO redirects go to
+    # canvaslms.com. Narrow this to YOUR district's host if you prefer.
+    - instructure.com
+    - cms.instructure.com
+    - sso.canvaslms.com

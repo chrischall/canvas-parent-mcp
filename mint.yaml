@@ -51,6 +51,16 @@ env:
       Set to 1 to disable the browser-bridge fallback, making missing
       credentials a hard error. Recommended for a hosted registration, which has
       no browser to fall back to.
+  - name: CANVAS_SESSION_CACHE
+    required: false
+    help: >-
+      Set to false to disable the on-disk session cache and authenticate on
+      every process start. Defaults to enabled.
+  - name: CANVAS_SESSION_FILE
+    required: false
+    help: >-
+      Absolute path for the session cache file. Defaults to
+      $MCP_DATA_DIR/.canvas-parent-mcp/session.json.
 egress:
   allow:
     # Canvas is multi-tenant per district: the base URL is a *.instructure.com
@@ -63,3 +73,12 @@ egress:
     # bin, not the child this manifest configures.
     - instructure.com
     - cms.instructure.com
+
+state:
+  dataDir: true
+  reason: >-
+    Caches the signed-in session at
+    $MCP_DATA_DIR/.canvas-parent-mcp/session.json (0600). Without it every cold
+    start re-runs the form login (session mode) or spends a refresh-token
+    exchange against Canvas (oauth mode); a hosted child idles out after ten
+    minutes, so that is most starts. Token mode caches nothing.

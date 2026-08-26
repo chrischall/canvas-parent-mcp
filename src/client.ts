@@ -1,4 +1,5 @@
 import { writeFile, stat } from 'fs/promises';
+import { createSessionCache, reportCacheWriteFailure } from './session-cache.js';
 import { dirname } from 'path';
 import { createOAuth2Refresher, parseLinkHeader } from '@chrischall/mcp-utils';
 import { CookieSessionManager } from '@chrischall/mcp-utils/session';
@@ -81,6 +82,9 @@ export class CanvasClient {
       // fall through as a Response and `mapStatus` turns them into a
       // TokenExpiredError.
       isExpired: (res) => res.status === 401 && this.canReauth(),
+      persistence:
+        createSessionCache(account, { browserBacked: this.refreshSession !== null }) ?? undefined,
+      onPersistError: reportCacheWriteFailure,
     });
   }
 

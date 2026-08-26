@@ -8,7 +8,7 @@ The npm package is `canvas-parent-mcp` because `canvas-mcp` and `canvas-lms-mcp`
 
 ```bash
 npm run build        # tsc + esbuild bundle → dist/
-npm test             # vitest run (all tests)
+npm test             # tsc typecheck + vitest run (all tests)
 npm run test:watch   # vitest in watch mode
 npm run dev          # node --env-file=.env dist/index.js (needs prior build)
 ```
@@ -114,7 +114,11 @@ Read tools that target a user accept an optional `observeeId`; when set, `userSe
 npm test
 ```
 
+`npm test` runs the typecheck first, then vitest — vitest transpiles with esbuild and never invokes `tsc`, so a green suite is not a green typecheck on its own.
+
 `vitest.config.ts` enforces 100% lines/functions/branches/statements across `src/**` (excluding `src/index.ts`, `src/qr-login-cli.ts`, `src/session-login-cli.ts` — the stdio/CLI entry points). No real network calls — tests mock at the `CanvasClient` / `fetch` level. Adding a tool or a branch requires a test or CI fails.
+
+`tests/_setup.ts` forces the session cache off, pins its path into a temp dir, and fails the suite if anything reached the real `~/.canvas-parent-mcp`.
 
 ## Plugin / marketplace
 

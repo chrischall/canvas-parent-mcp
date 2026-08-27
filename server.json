@@ -67,6 +67,18 @@
           "description": "Friendly name for the Canvas instance (defaults to the host portion of the base URL)",
           "isRequired": false,
           "format": "string"
+        },
+        {
+          "name": "CANVAS_SESSION_CACHE",
+          "description": "Set to false to disable the on-disk session cache and re-authenticate on every process start. Defaults to enabled.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "CANVAS_SESSION_FILE",
+          "description": "Absolute path for the session cache file. Defaults to $MCP_DATA_DIR/.canvas-parent-mcp/session.json.",
+          "isRequired": false,
+          "format": "string"
         }
       ]
     }

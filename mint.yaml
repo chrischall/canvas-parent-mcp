@@ -63,16 +63,31 @@ env:
       $MCP_DATA_DIR/.canvas-parent-mcp/session.json.
 egress:
   allow:
-    # Canvas is multi-tenant per district: the base URL is a *.instructure.com
-    # host (cms.instructure.com is the CMS district). Narrow this to YOUR
-    # district's host if you prefer.
+    # Only hosts the SERVER process actually fetches; hosts that appear solely
+    # in a URL this server builds and returns are excluded. Matching is EXACT:
+    # an apex entry covers no subdomain, and `*.` covers labels beneath it but
+    # not the apex — which is why the wildcard below is a wildcard.
+    #
+    # Canvas is multi-tenant per district: CANVAS_BASE_URL is a
+    # <district>.instructure.com host (cms.instructure.com is the CMS district)
+    # and every API call, the form login and the OAuth refresh go to it.
+    # Narrow the wildcard to YOUR district's host if you prefer. A self-hosted
+    # Canvas (a CANVAS_BASE_URL outside instructure.com) is env-selected and
+    # must be added here by hand.
+    #
+    # canvas_download_file follows the file URL Canvas returns, and a hosted
+    # district's download 302s to Instructure's file store, whose host carries
+    # the region (inst-fs-iad-prod.inscloudgate.net, -dub-, -syd-, …). The
+    # exact host is discovered at runtime, hence the wildcard.
     #
     # sso.canvaslms.com is deliberately NOT here: the hosted server never
     # contacts it. session-login.ts only INSPECTS a redirect's Location for
     # that host, and qr-login.ts is the separate canvas-parent-mcp-qr-login
-    # bin, not the child this manifest configures.
-    - instructure.com
+    # bin, not the child this manifest configures. The fetchproxy fallback
+    # lifts cookies through the browser bridge, which is not a dial either.
+    - "*.instructure.com"
     - cms.instructure.com
+    - "*.inscloudgate.net"
 
 state:
   dataDir: true

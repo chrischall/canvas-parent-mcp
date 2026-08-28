@@ -67,6 +67,12 @@ CANVAS_TOKEN=
 CANVAS_CLIENT_ID=
 CANVAS_CLIENT_SECRET=
 CANVAS_REFRESH_TOKEN=
+
+# Session cache — applies to modes B and D, the two with a login to skip.
+# Mode C (token) has no session to cache, and mode A does not cache: its
+# identity lives in the browser, so there is nothing to bind a record to.
+CANVAS_SESSION_CACHE=false   # optional; skip the on-disk cache, re-authenticate every start
+CANVAS_SESSION_FILE=         # optional; 0600 file, default $MCP_DATA_DIR/.canvas-parent-mcp/session.json
 ```
 
 `config.ts:readVar` and `auth.ts:readEnv` treat empty/whitespace, the literal strings `"undefined"` / `"null"`, and unsubstituted shell placeholders (`${...}`) as unset — Claude Desktop sometimes passes these for unset user_config refs.

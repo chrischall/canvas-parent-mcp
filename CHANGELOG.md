@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.5...v1.3.0) (2026-08-28)
+
+
+### Features
+
+* cache the signed-in session so a restart skips authenticating ([#137](https://github.com/chrischall/canvas-parent-mcp/issues/137)) ([f9a6c11](https://github.com/chrischall/canvas-parent-mcp/commit/f9a6c1152539af27af5494b0c210a10205b53c0f))
+
+
+### Documentation
+
+* list the cache env vars in server.json and .env.example ([#143](https://github.com/chrischall/canvas-parent-mcp/issues/143)) ([0a368f7](https://github.com/chrischall/canvas-parent-mcp/commit/0a368f7a6eedbc82ae0acc86e5db5f2f1aa0bb14))
+* list the session-cache vars in the Environment block ([#144](https://github.com/chrischall/canvas-parent-mcp/issues/144)) ([51b97f2](https://github.com/chrischall/canvas-parent-mcp/commit/51b97f26ddb0b18f736895322eb7c778a1307f5b))
+* npm test now typechecks before running vitest ([#141](https://github.com/chrischall/canvas-parent-mcp/issues/141)) ([d999f6e](https://github.com/chrischall/canvas-parent-mcp/commit/d999f6e136c1c074a32606939bbb90e90a045738))
+* **skill:** declare the name this skill actually publishes under ([#135](https://github.com/chrischall/canvas-parent-mcp/issues/135)) ([e574590](https://github.com/chrischall/canvas-parent-mcp/commit/e5745904508a86cbd457538ea41ff6167e503803))
+
 ## [1.2.5](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.4...v1.2.5) (2026-08-06)
 
 

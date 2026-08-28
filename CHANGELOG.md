@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/chrischall/canvas-parent-mcp/compare/v1.3.0...v1.3.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **egress:** declare every host the server dials in mint.yaml ([#145](https://github.com/chrischall/canvas-parent-mcp/issues/145)) ([d755152](https://github.com/chrischall/canvas-parent-mcp/commit/d7551528b0724c71f01a4fa2217fa3093bb061c4))
+
 ## [1.3.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.2.5...v1.3.0) (2026-08-28)
 
 

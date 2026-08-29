@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.3.1...v1.4.0) (2026-08-29)
+
+
+### Features
+
+* **deps:** take @fetchproxy/server 2.2.0 so the concentrator can bind its sandbox address ([#147](https://github.com/chrischall/canvas-parent-mcp/issues/147)) ([f5e14ec](https://github.com/chrischall/canvas-parent-mcp/commit/f5e14ec8ccd541fb67a4960f595d4f70ef31e17f))
+
 ## [1.3.1](https://github.com/chrischall/canvas-parent-mcp/compare/v1.3.0...v1.3.1) (2026-08-28)
 
 

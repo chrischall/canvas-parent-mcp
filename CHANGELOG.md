@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.4.0...v1.5.0) (2026-08-30)
+
+
+### Features
+
+* add canvas_healthcheck, registered even when unconfigured ([#149](https://github.com/chrischall/canvas-parent-mcp/issues/149)) ([5db8b59](https://github.com/chrischall/canvas-parent-mcp/commit/5db8b59cbc4b8b0d49e81644dd3c21fd2aace860))
+
 ## [1.4.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.3.1...v1.4.0) (2026-08-29)
 
 

@@ -102,7 +102,7 @@ Declared domain is `instructure.com` for any `*.instructure.com` Canvas tenant (
 
 ## Tools
 
-18 tools across profile, observees, courses, assignments, submissions, grades, calendar, planner, announcements, conversations, discussions, files. All read-only except `canvas_download_file` (annotated `destructiveHint: true`).
+19 tools across profile, observees, courses, assignments, submissions, grades, calendar, planner, announcements, conversations, discussions, files, plus a credential healthcheck. All read-only except `canvas_download_file` (annotated `destructiveHint: true`).
 
 Read tools that target a user accept an optional `observeeId`; when set, `userSegment()` swaps `users/self` → `users/${observeeId}`.
 

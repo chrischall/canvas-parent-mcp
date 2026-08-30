@@ -32,6 +32,16 @@ describe('canvas_healthcheck', () => {
     expect(result.error?.message).toMatch(/CANVAS_TOKEN/);
   });
 
+  // The `??` fallback: `index.ts` always sets configError when resolution
+  // fails, so this is defensive — but a healthcheck that threw `undefined`
+  // would report nothing at all, which is the one outcome it must never have.
+  it('still answers when unconfigured with no stored error', async () => {
+    const { result } = await call({ resolved: null, configError: null });
+    expect(result.ok).toBe(false);
+    expect(result.error?.kind).toBe('no_credential');
+    expect(result.error?.message).toMatch(/not configured/i);
+  });
+
   it('reports which auth path resolved', async () => {
     const { result } = await call({
       resolved: {

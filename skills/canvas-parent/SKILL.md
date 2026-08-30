@@ -56,6 +56,7 @@ Precedence when multiple are set: `CANVAS_TOKEN` > username/password > OAuth > f
 
 ### Profile & observees
 - `canvas_get_profile` — your Canvas profile
+- `canvas_healthcheck` — which auth path resolved and whether Canvas accepts it; registered even when auth is unconfigured, so it can say why
 - `canvas_list_observees` — students linked to your observer account
 
 ### Courses

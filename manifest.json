@@ -152,6 +152,10 @@
     {
       "name": "canvas_download_file",
       "description": "Download a Canvas file to disk by absolute URL"
+    },
+    {
+      "name": "canvas_healthcheck",
+      "description": "Verify Canvas credentials and reachability. Registered even when auth is unconfigured, so it can report WHICH auth path failed rather than the server exposing no tools at all."
     }
   ]
 }

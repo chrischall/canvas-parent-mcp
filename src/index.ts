@@ -10,6 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 await loadDotenvSafely({ path: join(__dirname, '..', '.env'), override: false });
 
 import { resolveAuth, type ResolvedAuth } from './auth.js';
+import { registerHealthcheckTools } from './tools/healthcheck.js';
 import { CanvasClient } from './client.js';
 import { registerProfileTools } from './tools/profile.js';
 import { registerObserveeTools } from './tools/observees.js';
@@ -51,6 +52,9 @@ await runMcp({
   name: 'canvas',
   version: '1.4.0', // x-release-please-version
   tools: [
+    // Outside the `if (resolved)` on purpose: an unconfigured server must
+    // still expose something that can say WHY (see the tool's docblock).
+    (server) => registerHealthcheckTools(server, { resolved, configError }),
     (server) => {
       if (resolved) {
         const client = new CanvasClient(resolved.account, {

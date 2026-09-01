@@ -61,6 +61,13 @@ env:
     help: >-
       Absolute path for the session cache file. Defaults to
       $MCP_DATA_DIR/.canvas-parent-mcp/session.json.
+  - name: CANVAS_ACCESS_TOKEN
+    secret: true
+    required: false
+    help: >-
+      An access token you already hold. Optional beside the OAuth trio: when set it
+      is used directly, so a cold start spends no refresh. It expires — the refresh
+      token is what renews it, so this is a shortcut, not a replacement.
 egress:
   allow:
     # Only hosts the SERVER process actually fetches; hosts that appear solely

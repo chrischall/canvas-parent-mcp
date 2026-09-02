@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.1](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.0...v1.5.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* **mint:** drop CANVAS_ACCESS_TOKEN — the variable is inert ([#161](https://github.com/chrischall/canvas-parent-mcp/issues/161)) ([7066efa](https://github.com/chrischall/canvas-parent-mcp/commit/7066efaa17b6d90ab7a92ab2d124e39fa27c9b11))
+
+
+### Documentation
+
+* **mint:** declare CANVAS_ACCESS_TOKEN in mint.yaml ([#158](https://github.com/chrischall/canvas-parent-mcp/issues/158)) ([3851dbd](https://github.com/chrischall/canvas-parent-mcp/commit/3851dbd32b1aaabc3e79741218cc25359cb692bd))
+
 ## [1.5.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.4.0...v1.5.0) (2026-08-30)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.3](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.2...v1.5.3) (2026-09-04)
+
+
+### Documentation
+
+* **skill:** document the `view` response shape ([#173](https://github.com/chrischall/canvas-parent-mcp/issues/173)) ([c314ce9](https://github.com/chrischall/canvas-parent-mcp/commit/c314ce90eac47c4ac3362efbac7942636768aa65))
+
 ## [1.5.2](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.1...v1.5.2) (2026-09-04)
 
 

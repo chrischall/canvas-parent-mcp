@@ -50,7 +50,7 @@ try {
 // host's install-time `tools/list` succeeds.
 await runMcp({
   name: 'canvas',
-  version: '1.5.1', // x-release-please-version
+  version: '1.5.2', // x-release-please-version
   tools: [
     // Outside the `if (resolved)` on purpose: an unconfigured server must
     // still expose something that can say WHY (see the tool's docblock).

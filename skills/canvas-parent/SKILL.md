@@ -61,13 +61,13 @@ Precedence when multiple are set: `CANVAS_TOKEN` > username/password > OAuth > f
 
 ### Courses
 - `canvas_list_courses` — your active courses with grades
-- `canvas_get_course(courseId)` — course detail with syllabus + teachers
+- `canvas_get_course(courseId, view?)` — course detail with syllabus + teachers
 
 ### Assignments & submissions
 - `canvas_list_assignments(courseId)` — assignments in a course
 - `canvas_list_missing_submissions` — past-due unsubmitted work
-- `canvas_get_submission(courseId, assignmentId)` — your submission with comments + rubric
-- `canvas_list_recent_submissions(courseId)` — recently graded submissions (default 14d)
+- `canvas_get_submission(courseId, assignmentId, view?)` — your submission with comments + rubric
+- `canvas_list_recent_submissions(courseId, view?)` — recently graded submissions (default 14d)
 
 ### Grades
 - `canvas_list_enrollments` — per-course grades
@@ -78,14 +78,69 @@ Precedence when multiple are set: `CANVAS_TOKEN` > username/password > OAuth > f
 - `canvas_list_planner_items` — unified to-do feed
 
 ### Communication
-- `canvas_list_announcements(contextCodes)` — course announcements
+- `canvas_list_announcements(contextCodes, view?)` — course announcements
 - `canvas_list_conversations` — inbox
-- `canvas_get_conversation(id)` — full conversation thread
-- `canvas_list_discussion_topics(courseId)` — course discussion topics
+- `canvas_get_conversation(id, view?)` — full conversation thread
+- `canvas_list_discussion_topics(courseId, view?)` — course discussion topics
 
 ### Files
 - `canvas_list_course_files(courseId)` — file metadata
 - `canvas_download_file(url, destinationPath)` — download a file to disk
+
+## Response shape (`view`)
+
+Nine tools take `view: "compact" | "full"`, and **`compact` is the default** —
+you get the slim shape without asking for it:
+
+`canvas_get_profile`, `canvas_list_observees`, `canvas_get_course`,
+`canvas_get_submission`, `canvas_list_recent_submissions`,
+`canvas_list_announcements`, `canvas_list_conversations`,
+`canvas_get_conversation`, `canvas_list_discussion_topics`.
+
+**Compact here is media stripping, not a field projection — do not expect a
+field list.** It removes the avatar URLs Canvas hangs on user objects
+(`avatar_url`, `avatar_image_url`) and nothing else. This server hands back
+Canvas's payload verbatim and holds no verified record of which of Canvas's
+fields a caller needs, so it does not claim to keep some and drop others: a
+record that came back with holes in it would read exactly like a verified
+answer. Stripping is subtractive, so it cannot lose a field nobody knew about.
+A conversation participant keeps their name and id on compact; they lose their
+picture.
+
+- **The link fields survive both rungs, named explicitly.** `url`, `html_url`
+  and `preview_url` are kept by name — `html_url` opens the item in Canvas,
+  `preview_url` renders a submission, and `url` is the download handle
+  `canvas_list_course_files` emits and `canvas_download_file` consumes. On an
+  `online_url` submission that `url` IS the student's submitted work. Without
+  the name, a student who submitted a link ending in `.png` would have had
+  their submission silently removed on the default rung.
+- **Both avatar spellings really do appear.** One live
+  `canvas_list_conversations` response carried a default avatar
+  (`…/avatar-50.png`) on one participant and an uploaded, extension-less
+  thumbnail id on another. They are dropped by NAME, so both go — not one kept
+  and one lost depending on whether that person ever uploaded a photo.
+
+Pass `view: "full"` when you want Canvas's payload untouched, avatars and all.
+That is also why there is deliberately **no `raw` rung**: there is no
+normalisation layer here for `full` to sit above, so `full` already IS the
+untouched upstream payload and a third value would silently alias it.
+
+The other ten tools take no `view`, for two different reasons:
+
+- **Nothing to strip.** `canvas_list_courses`, `canvas_list_assignments`,
+  `canvas_list_missing_submissions`, `canvas_list_enrollments`,
+  `canvas_list_calendar_events`, `canvas_list_upcoming_events` and
+  `canvas_list_planner_items` embed no user object — a live
+  `canvas_list_courses` over twelve courses carried no media field of any kind
+  — and a knob that does not turn is worse than no knob. `canvas_healthcheck`
+  returns a verdict, not a record.
+- **The URL is the product.** `canvas_list_course_files` and
+  `canvas_download_file` exist to hand you a file URL. Compact there would not
+  shrink the response, it would empty it.
+
+Passing `view` to one of those ten is not an error and not a warning: MCP tool
+schemas are non-strict, so the key is dropped and you get that tool's ordinary
+output.
 
 ## Notes
 

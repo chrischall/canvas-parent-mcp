@@ -1,11 +1,11 @@
-import { buildQueryString, textResult } from '@chrischall/mcp-utils';
+import { buildQueryString, minifiedResult } from '@chrischall/mcp-utils';
 
 /**
  * Wrap a value as an MCP text content block — the standard tool return shape.
- * Backed by the fleet-shared `textResult` from `@chrischall/mcp-utils` (same
+ * Backed by the fleet-shared `minifiedResult` from `@chrischall/mcp-utils` (same
  * `{ content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] }` shape).
  */
-export const textContent = textResult;
+export const textContent = minifiedResult;
 
 /** Detect "Canvas 404 ..." errors thrown by CanvasClient.request for endpoints that don't exist. */
 export function is404(e: unknown): boolean {

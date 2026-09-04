@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { textContent, is404, toArray, buildPath, userSegment } from '../../src/tools/_shared.js';
 
 describe('_shared.textContent', () => {
-  it('wraps an object as pretty-printed JSON text block', () => {
+  it('wraps an object as a minified JSON text block', () => {
     expect(textContent({ a: 1 })).toEqual({
-      content: [{ type: 'text', text: JSON.stringify({ a: 1 }, null, 2) }],
+      content: [{ type: 'text', text: JSON.stringify({ a: 1 }) }],
     });
   });
   it('wraps an array', () => {
-    expect(textContent([1, 2]).content[0].text).toBe('[\n  1,\n  2\n]');
+    expect(textContent([1, 2]).content[0].text).toBe('[1,2]');
   });
   it('wraps null', () => {
     expect(textContent(null).content[0].text).toBe('null');

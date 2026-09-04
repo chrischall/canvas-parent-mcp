@@ -1,13 +1,15 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { textContent, buildPath } from './_shared.js';
+import { buildPath } from './_shared.js';
+import { viewArg, viewResponse } from '../view.js';
 
 const argsSchema = z.object({
   contextCodes: z.array(z.string()).describe('Required. Array like ["course_123", "course_456"].'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   activeOnly: z.boolean().optional(),
+  view: viewArg(),
 });
 
 export function registerAnnouncementTools(server: McpServer, client: CanvasClient): void {
@@ -24,6 +26,6 @@ export function registerAnnouncementTools(server: McpServer, client: CanvasClien
       active_only: args.activeOnly ?? true,
     });
     const data = await client.requestPaginated(path);
-    return textContent(data);
+    return viewResponse(args.view, data);
   });
 }

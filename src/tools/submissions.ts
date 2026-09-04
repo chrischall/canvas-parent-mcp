@@ -1,18 +1,21 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { textContent, buildPath } from './_shared.js';
+import { buildPath } from './_shared.js';
+import { viewArg, viewResponse } from '../view.js';
 
 const getArgs = z.object({
   courseId: z.string(),
   assignmentId: z.string(),
   userId: z.string().optional().describe("'self' or a numeric Canvas user ID. Defaults to 'self'."),
+  view: viewArg(),
 });
 
 const recentArgs = z.object({
   courseId: z.string(),
   studentId: z.string().optional().describe("'self' or a numeric Canvas user ID. Defaults to 'self'."),
   since: z.string().optional().describe('ISO 8601 timestamp; defaults to 14 days ago.'),
+  view: viewArg(),
 });
 
 export function registerSubmissionTools(server: McpServer, client: CanvasClient): void {
@@ -28,7 +31,7 @@ export function registerSubmissionTools(server: McpServer, client: CanvasClient)
       { 'include[]': ['submission_comments', 'rubric_assessment', 'assignment'] },
     );
     const data = await client.request(path);
-    return textContent(data);
+    return viewResponse(args.view, data);
   });
 
   server.registerTool('canvas_list_recent_submissions', {
@@ -46,6 +49,6 @@ export function registerSubmissionTools(server: McpServer, client: CanvasClient)
       'include[]': ['assignment', 'submission_comments'],
     });
     const data = await client.requestPaginated(path);
-    return textContent(data);
+    return viewResponse(args.view, data);
   });
 }

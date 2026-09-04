@@ -2,8 +2,12 @@ import { buildQueryString, minifiedResult } from '@chrischall/mcp-utils';
 
 /**
  * Wrap a value as an MCP text content block — the standard tool return shape.
- * Backed by the fleet-shared `minifiedResult` from `@chrischall/mcp-utils` (same
- * `{ content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] }` shape).
+ * Backed by the fleet-shared `minifiedResult` from `@chrischall/mcp-utils`:
+ * `{ content: [{ type: 'text', text: JSON.stringify(data) }] }`, with no indent
+ * argument. Roughly a fifth of a large response is formatting whitespace that
+ * nothing downstream reads, and this is where it stops being emitted — the
+ * reads that also take a `view` reach the same helper through
+ * `viewResponse` (`src/view.ts`).
  */
 export const textContent = minifiedResult;
 

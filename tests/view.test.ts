@@ -134,17 +134,19 @@ describe('compact keeps what a caller acts on', () => {
     expect(parsed(viewResponse('compact', attachment))).toEqual(attachment);
   });
 
-  it('does NOT reach snake_case media keys the DROP list does not name', () => {
-    // Pinning the limit of what this rung claims, because it is easy to assume
-    // otherwise. `MEDIA_KEY` anchors a media noun at the start and allows only a
-    // Link|Uri|Url suffix run directly against it, so Canvas's `thumbnail_url`
-    // matches nothing — the same gap `avatar_url` has, and the reason both
-    // avatar spellings had to be named explicitly rather than left to the
-    // built-ins. No tool wired to `view` returns a `thumbnail_url` today (the
-    // file tools take no `view`), so adding a rule for it would be speculation
-    // about a payload this server does not produce.
+  it('reaches snake_case media keys on its own since mcp-utils 0.23.1', () => {
+    // This test previously pinned the OPPOSITE, and pinning it is why the
+    // change was noticed: `MEDIA_KEY` used to anchor a media noun at the start
+    // and allow only a Link|Uri|Url suffix run directly against it, so Canvas's
+    // snake_case `thumbnail_url` matched nothing and the local DROP list had to
+    // name `avatar_url` explicitly.
+    //
+    // mcp-utils#198/#201 made the separator optional and allowed a bounded
+    // qualifier prefix, so the built-in rule now covers the whole snake_case
+    // family. The DROP entries below are kept anyway — see src/view.ts.
     const out = parsed(viewResponse('compact', { id: '77', thumbnail_url: 'https://cms.instructure.com/images/thumbnails/77/abc' }));
-    expect(out.thumbnail_url).toBe('https://cms.instructure.com/images/thumbnails/77/abc');
+    expect(out.thumbnail_url).toBeUndefined();
+    expect(out.id).toBe('77');
   });
 
   it('keeps a null rather than removing the key', () => {

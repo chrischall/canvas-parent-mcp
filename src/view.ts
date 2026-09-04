@@ -51,14 +51,20 @@ export const viewArg = (): ReturnType<typeof viewParam> => viewParam(CV_VIEWS, {
 const KEEP = ['url', 'html_url', 'preview_url'] as const;
 
 /**
- * `avatar_url` and `avatar_image_url` are DROPPED, by name, because the
- * built-in rules miss BOTH of them — verified against live payloads.
+ * `avatar_url` and `avatar_image_url` are DROPPED by name.
  *
- * The KEY rule does not fire: `MEDIA_KEY` anchors a media noun at the start and
- * allows only a `Link|Uri|Url` suffix run directly against it, so it matches
- * `avatarUrl` and bare `avatar` but not Canvas's snake_case `avatar_url`, and
- * not `avatar_image_url` at all. Canvas names every one of its media fields in
- * snake_case, so the key rule removes nothing here.
+ * They no longer HAVE to be. When this was written the built-in `MEDIA_KEY`
+ * anchored a media noun at the start and allowed only a `Link|Uri|Url` suffix
+ * run directly against it, so it matched `avatarUrl` and bare `avatar` but
+ * neither of Canvas's snake_case spellings — and Canvas names every media field
+ * in snake_case, so the key rule removed nothing here. mcp-utils 0.23.1
+ * (#198/#201) made the separator optional and allowed a bounded qualifier
+ * prefix, which covers both.
+ *
+ * They stay because a repo naming the fields it means to drop is more legible
+ * than one relying on a library pattern to keep matching them, and because this
+ * list is what the live-payload verification was done against. It is now
+ * belt-and-braces rather than the only thing holding.
  *
  * The VALUE rule fires only by accident: Canvas's DEFAULT avatar is
  * `…/images/messages/avatar-50.png`, which ends in an image extension and is

@@ -31,6 +31,7 @@ src/
   session-login.ts    # POSTs /login/canvas form, harvests pseudonym_credentials cookie (legacy path 3)
   qr-login.ts         # Mobile QR → mobile_verify.json → authorization_code exchange → OAuth tokens (bootstraps path 2)
   qr-login-cli.ts     # Thin CLI wrapper around qr-login (printed as env vars)
+  view.ts             # CV_VIEWS/viewArg/viewResponse — the `view` rung (compact default, full opt-in). Wired ONLY into the reads whose Canvas payload embeds a user object; see its docblocks for the KEEP/DROP reasoning
   tools/
     _shared.ts        # textContent(), buildPath(), userSegment(), is404(), toArray()
     profile.ts        announcements.ts   calendar.ts        conversations.ts
@@ -105,6 +106,40 @@ Declared domain is `instructure.com` for any `*.instructure.com` Canvas tenant (
 19 tools across profile, observees, courses, assignments, submissions, grades, calendar, planner, announcements, conversations, discussions, files, plus a credential healthcheck. All read-only except `canvas_download_file` (annotated `destructiveHint: true`).
 
 Read tools that target a user accept an optional `observeeId`; when set, `userSegment()` swaps `users/self` → `users/${observeeId}`.
+
+### Response shape (`view`)
+
+Nine reads take `view: compact | full` (`src/view.ts`), compact by default. This
+server projects nothing — every tool hands back Canvas's payload verbatim — so
+compact does the one thing that needs no knowledge of the API: it removes avatar
+URLs. `full` returns Canvas untouched.
+
+**Only the reads whose payload embeds a Canvas USER object are wired**, because
+that is the only place Canvas hangs an avatar: `canvas_get_profile`,
+`canvas_list_observees`, `canvas_get_course` (its `teachers`),
+`canvas_get_submission` / `canvas_list_recent_submissions` (comment authors),
+`canvas_list_announcements`, `canvas_list_discussion_topics` (authors), and
+`canvas_list_conversations` / `canvas_get_conversation` (participants — both
+request `include[]=participant_avatars`). The rest take no `view` at all: courses,
+assignments, missing submissions, enrollments, calendar, upcoming events and
+planner items carry no user object, and a parameter that changes nothing is worse
+than no parameter. The two file tools are excluded for the opposite reason — their
+product is the URL. `tests/tools/view-wiring.test.ts` pins that set on both sides,
+and fails if a new tool is added without making the call.
+
+**Both avatar fields are named explicitly in `DROP`, because the shared helper's
+built-in rules miss them.** `MEDIA_KEY` anchors a media noun at the start and
+allows only a `Link|Uri|Url` suffix run directly against it, so it matches
+`avatarUrl` but not Canvas's snake_case `avatar_url`, and not `avatar_image_url`
+under any form — Canvas names everything snake_case, so the key rule fires
+nowhere here. The value rule fires only by accident: a DEFAULT avatar ends
+`…/avatar-50.png` and is dropped, while an UPLOADED one is
+`…/images/thumbnails/11689524/MVccGA…`, extension-less, and survives. Both
+spellings came back in one live `canvas_list_conversations`, so leaving it to the
+built-ins produced a payload where one participant kept their avatar and the
+other lost it. `url`, `html_url` and `preview_url` are in `KEEP` for the mirror
+reason: they are Canvas's link fields, and an `online_url` submission's `url` IS
+the student's work.
 
 ## Canvas API quirks (handled in `client.ts`)
 

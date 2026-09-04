@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { textContent, buildPath, userSegment } from './_shared.js';
+import { viewArg, viewResponse } from '../view.js';
 
 const listArgs = z.object({
   observeeId: z.string().optional().describe("Observed student's user ID; omit for self."),
@@ -9,6 +10,7 @@ const listArgs = z.object({
 
 const getArgs = z.object({
   courseId: z.string(),
+  view: viewArg(),
 });
 
 export function registerCourseTools(server: McpServer, client: CanvasClient): void {
@@ -37,6 +39,6 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
       'include[]': ['syllabus_body', 'teachers', 'term'],
     });
     const data = await client.request(path);
-    return textContent(data);
+    return viewResponse(args.view, data);
   });
 }

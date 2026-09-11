@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.5](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.4...v1.5.5) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** @fetchproxy/server 2.11.3, so the hosted extension pin persists ([#187](https://github.com/chrischall/canvas-parent-mcp/issues/187)) ([e70af9e](https://github.com/chrischall/canvas-parent-mcp/commit/e70af9e2d6f6154ffbb249bf0adf18cb3adbe778))
+
 ## [1.5.4](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.3...v1.5.4) (2026-09-10)
 
 

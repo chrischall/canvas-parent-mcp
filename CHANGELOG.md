@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.5](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.4...v1.5.5) (2026-09-14)
+
+
+### Bug Fixes
+
+* **deps:** @fetchproxy/server 2.11.3, so the hosted extension pin persists ([#187](https://github.com/chrischall/canvas-parent-mcp/issues/187)) ([e70af9e](https://github.com/chrischall/canvas-parent-mcp/commit/e70af9e2d6f6154ffbb249bf0adf18cb3adbe778))
+* **deps:** @fetchproxy/server 3.0.0 — protocol v4 (forward secrecy, AAD over the frame) ([#191](https://github.com/chrischall/canvas-parent-mcp/issues/191)) ([533f81a](https://github.com/chrischall/canvas-parent-mcp/commit/533f81af06de374aac82662ed47be736909bad4e))
+* **deps:** bump the production-dependencies group with 3 updates ([d792e6c](https://github.com/chrischall/canvas-parent-mcp/commit/d792e6c64a77d2da4032a3140f4ee0c37fb2e83f))
+
 ## [1.5.4](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.3...v1.5.4) (2026-09-10)
 
 

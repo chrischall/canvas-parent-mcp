@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.6](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.5...v1.5.6) (2026-09-15)
+
+
+### Bug Fixes
+
+* **deps:** @fetchproxy/server 3.0.1 — capped peer frames, logged load drops, atomic identity writes ([#192](https://github.com/chrischall/canvas-parent-mcp/issues/192)) ([808dfbf](https://github.com/chrischall/canvas-parent-mcp/commit/808dfbf8addd222e59c692c8c164c7d25018f85d))
+
 ## [1.5.5](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.4...v1.5.5) (2026-09-14)
 
 

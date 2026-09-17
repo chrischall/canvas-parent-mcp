@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { textContent, buildPath } from './_shared.js';
@@ -15,7 +15,7 @@ export function registerPlannerTools(server: McpServer, client: CanvasClient): v
   server.registerTool('canvas_list_planner_items', {
     description: "List planner items (assignments + announcements + planner notes + calendar events) for the user or a linked observee.",
     annotations: { readOnlyHint: true },
-    inputSchema: argsSchema.shape,
+    inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);
     const base = args.observeeId

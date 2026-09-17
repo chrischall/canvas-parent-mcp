@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { buildPath } from './_shared.js';
@@ -15,7 +15,7 @@ export function registerDiscussionTools(server: McpServer, client: CanvasClient)
   server.registerTool('canvas_list_discussion_topics', {
     description: 'List discussion topics for a course (read-only).',
     annotations: { readOnlyHint: true },
-    inputSchema: argsSchema.shape,
+    inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);
     const path = buildPath(`/api/v1/courses/${encodeURIComponent(args.courseId)}/discussion_topics`, {

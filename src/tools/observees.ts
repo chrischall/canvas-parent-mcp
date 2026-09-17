@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { viewArg, viewResponse } from '../view.js';
@@ -11,7 +11,7 @@ export function registerObserveeTools(server: McpServer, client: CanvasClient): 
   server.registerTool('canvas_list_observees', {
     description: "List students linked to your Canvas observer account. Returns an empty array for plain student tokens.",
     annotations: { readOnlyHint: true },
-    inputSchema: argsSchema.shape,
+    inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);
     const data = await client.requestPaginated('/api/v1/users/self/observees?include[]=avatar_url');

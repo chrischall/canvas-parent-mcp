@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { textContent, buildPath, userSegment } from './_shared.js';
@@ -17,7 +17,7 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
   server.registerTool('canvas_list_courses', {
     description: 'List active Canvas courses (with course-level grades, total scores, current grading period scores, and term).',
     annotations: { readOnlyHint: true },
-    inputSchema: listArgs.shape,
+    inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/${userSegment(args.observeeId)}/courses`, {
@@ -32,7 +32,7 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
   server.registerTool('canvas_get_course', {
     description: 'Get a single Canvas course with its syllabus, teachers, and term.',
     annotations: { readOnlyHint: true },
-    inputSchema: getArgs.shape,
+    inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/courses/${encodeURIComponent(args.courseId)}`, {

@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { buildPath } from './_shared.js';
@@ -19,7 +19,7 @@ export function registerConversationTools(server: McpServer, client: CanvasClien
   server.registerTool('canvas_list_conversations', {
     description: "List Canvas inbox conversations. Optional `scope` (unread/starred/archived/sent) and `filter` (array of context codes).",
     annotations: { readOnlyHint: true },
-    inputSchema: listArgs.shape,
+    inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
     const path = buildPath('/api/v1/conversations', {
@@ -34,7 +34,7 @@ export function registerConversationTools(server: McpServer, client: CanvasClien
   server.registerTool('canvas_get_conversation', {
     description: 'Get a full Canvas conversation thread with all messages.',
     annotations: { readOnlyHint: true },
-    inputSchema: getArgs.shape,
+    inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/conversations/${encodeURIComponent(args.id)}`, {

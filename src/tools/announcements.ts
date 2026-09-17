@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { buildPath } from './_shared.js';
@@ -16,7 +16,7 @@ export function registerAnnouncementTools(server: McpServer, client: CanvasClien
   server.registerTool('canvas_list_announcements', {
     description: "List announcements across one or more courses. `contextCodes` is required (e.g. [\"course_123\"]). Defaults to active-only.",
     annotations: { readOnlyHint: true },
-    inputSchema: argsSchema.shape,
+    inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);
     const path = buildPath('/api/v1/announcements', {

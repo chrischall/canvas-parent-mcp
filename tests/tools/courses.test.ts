@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { CanvasClient } from '../../src/client.js';
 import { registerCourseTools } from '../../src/tools/courses.js';
 

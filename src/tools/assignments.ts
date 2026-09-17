@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { textContent, buildPath, userSegment } from './_shared.js';
@@ -15,6 +15,7 @@ const missingArgs = z.object({
 });
 
 export function registerAssignmentTools(server: McpServer, client: CanvasClient): void {
+  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_assignments', {
     description: "List a course's assignments (with the user's submission inline). Supports the standard Canvas `bucket` filter.",
     annotations: { readOnlyHint: true },
@@ -30,6 +31,7 @@ export function registerAssignmentTools(server: McpServer, client: CanvasClient)
     return textContent(data);
   });
 
+  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_missing_submissions', {
     description: "List past-due unsubmitted assignments for the user (or a linked observee). For an observee, courseIds is required.",
     annotations: { readOnlyHint: true },

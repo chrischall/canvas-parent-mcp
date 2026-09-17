@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { buildPath } from './_shared.js';
@@ -16,6 +16,7 @@ const getArgs = z.object({
 });
 
 export function registerConversationTools(server: McpServer, client: CanvasClient): void {
+  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_conversations', {
     description: "List Canvas inbox conversations. Optional `scope` (unread/starred/archived/sent) and `filter` (array of context codes).",
     annotations: { readOnlyHint: true },
@@ -31,6 +32,7 @@ export function registerConversationTools(server: McpServer, client: CanvasClien
     return viewResponse(args.view, data);
   });
 
+  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_get_conversation', {
     description: 'Get a full Canvas conversation thread with all messages.',
     annotations: { readOnlyHint: true },

@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
 import { textContent, buildPath, userSegment } from './_shared.js';
@@ -14,6 +14,7 @@ const getArgs = z.object({
 });
 
 export function registerCourseTools(server: McpServer, client: CanvasClient): void {
+  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_courses', {
     description: 'List active Canvas courses (with course-level grades, total scores, current grading period scores, and term).',
     annotations: { readOnlyHint: true },
@@ -29,6 +30,7 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
     return textContent(data);
   });
 
+  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_get_course', {
     description: 'Get a single Canvas course with its syllabus, teachers, and term.',
     annotations: { readOnlyHint: true },

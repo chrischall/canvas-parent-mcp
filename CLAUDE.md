@@ -38,9 +38,10 @@ src/
     courses.ts        discussions.ts     files.ts           grades.ts
     observees.ts      planner.ts         submissions.ts     assignments.ts
 tests/                # Mirrors src/. Mocks CanvasClient.request/requestPaginated/download via vi.spyOn
+                       # @modelcontextprotocol/client is a direct dev dependency because @chrischall/mcp-utils/test imports that optional peer at runtime.
 ```
 
-Each `tools/*.ts` exports `register<Domain>Tools(server, client)`. Schemas use the const-zod pattern: `const args = z.object({...})`; SDK gets `args.shape`, handler does `args.parse(rawArgs)`. Single source of truth for schema and runtime safety.
+Each `tools/*.ts` exports `register<Domain>Tools(server, client)`. Schemas use the const-zod pattern: `const args = z.object({...})`; SDK v2 gets the Zod object directly as `inputSchema: args`, and the handler calls `args.parse(rawArgs)`. Single source of truth for schema and runtime safety.
 
 ## Environment
 

@@ -12,11 +12,10 @@ const argsSchema = z.object({
 });
 
 export function registerPlannerTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_planner_items', {
     description: "List planner items (assignments + announcements + planner notes + calendar events) for the user or a linked observee.",
     annotations: { readOnlyHint: true },
-    inputSchema: argsSchema.shape,
+    inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);
     const base = args.observeeId

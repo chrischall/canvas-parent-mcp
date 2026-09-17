@@ -12,11 +12,10 @@ const argsSchema = z.object({
 });
 
 export function registerDiscussionTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_discussion_topics', {
     description: 'List discussion topics for a course (read-only).',
     annotations: { readOnlyHint: true },
-    inputSchema: argsSchema.shape,
+    inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);
     const path = buildPath(`/api/v1/courses/${encodeURIComponent(args.courseId)}/discussion_topics`, {

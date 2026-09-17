@@ -12,11 +12,10 @@ const eventsArgs = z.object({
 });
 
 export function registerCalendarTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_calendar_events', {
     description: 'List Canvas calendar events or assignments across selected contexts (courses/users).',
     annotations: { readOnlyHint: true },
-    inputSchema: eventsArgs.shape,
+    inputSchema: eventsArgs,
   }, async (rawArgs) => {
     const args = eventsArgs.parse(rawArgs);
     const path = buildPath('/api/v1/calendar_events', {

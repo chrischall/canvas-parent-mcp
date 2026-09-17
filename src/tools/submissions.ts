@@ -19,11 +19,10 @@ const recentArgs = z.object({
 });
 
 export function registerSubmissionTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_get_submission', {
     description: "Get a single submission with rubric assessment and grader comments. userId defaults to 'self'.",
     annotations: { readOnlyHint: true },
-    inputSchema: getArgs.shape,
+    inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);
     const userId = args.userId ?? 'self';
@@ -35,11 +34,10 @@ export function registerSubmissionTools(server: McpServer, client: CanvasClient)
     return viewResponse(args.view, data);
   });
 
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_recent_submissions', {
     description: "List recently graded submissions in a course. Defaults to a 14-day window for the calling user.",
     annotations: { readOnlyHint: true },
-    inputSchema: recentArgs.shape,
+    inputSchema: recentArgs,
   }, async (rawArgs) => {
     const args = recentArgs.parse(rawArgs);
     const studentId = args.studentId ?? 'self';

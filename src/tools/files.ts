@@ -16,11 +16,10 @@ const downloadArgs = z.object({
 });
 
 export function registerFileTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_course_files', {
     description: "List a course's files (metadata only — use canvas_download_file with the `url` field).",
     annotations: { readOnlyHint: true },
-    inputSchema: listArgs.shape,
+    inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/courses/${encodeURIComponent(args.courseId)}/files`, {
@@ -31,11 +30,10 @@ export function registerFileTools(server: McpServer, client: CanvasClient): void
     return textContent(data);
   });
 
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_download_file', {
     description: "Download a Canvas file to disk. `url` is the absolute URL from canvas_list_course_files; `destinationPath` is required.",
     annotations: { destructiveHint: true },
-    inputSchema: downloadArgs.shape,
+    inputSchema: downloadArgs,
   }, async (rawArgs) => {
     const args = downloadArgs.parse(rawArgs);
     const meta = await client.download(args.url, args.destinationPath, {

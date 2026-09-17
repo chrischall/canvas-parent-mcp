@@ -14,11 +14,10 @@ const getArgs = z.object({
 });
 
 export function registerCourseTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_courses', {
     description: 'List active Canvas courses (with course-level grades, total scores, current grading period scores, and term).',
     annotations: { readOnlyHint: true },
-    inputSchema: listArgs.shape,
+    inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/${userSegment(args.observeeId)}/courses`, {
@@ -30,11 +29,10 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
     return textContent(data);
   });
 
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_get_course', {
     description: 'Get a single Canvas course with its syllabus, teachers, and term.',
     annotations: { readOnlyHint: true },
-    inputSchema: getArgs.shape,
+    inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/courses/${encodeURIComponent(args.courseId)}`, {

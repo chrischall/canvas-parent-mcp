@@ -16,11 +16,10 @@ const getArgs = z.object({
 });
 
 export function registerConversationTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_conversations', {
     description: "List Canvas inbox conversations. Optional `scope` (unread/starred/archived/sent) and `filter` (array of context codes).",
     annotations: { readOnlyHint: true },
-    inputSchema: listArgs.shape,
+    inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
     const path = buildPath('/api/v1/conversations', {
@@ -32,11 +31,10 @@ export function registerConversationTools(server: McpServer, client: CanvasClien
     return viewResponse(args.view, data);
   });
 
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_get_conversation', {
     description: 'Get a full Canvas conversation thread with all messages.',
     annotations: { readOnlyHint: true },
-    inputSchema: getArgs.shape,
+    inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/conversations/${encodeURIComponent(args.id)}`, {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/server';
+import { z } from 'zod';
 import { CanvasClient } from '../../src/client.js';
 import { registerProfileTools } from '../../src/tools/profile.js';
 import { registerObserveeTools } from '../../src/tools/observees.js';
@@ -42,7 +43,8 @@ function setupAll() {
   const handlers = new Map<string, Handler>();
   const schemas = new Map<string, Record<string, unknown> | undefined>();
   vi.spyOn(server, 'registerTool').mockImplementation((name: string, config: unknown, cb: unknown) => {
-    schemas.set(name, (config as { inputSchema?: Record<string, unknown> }).inputSchema);
+    const inputSchema = (config as { inputSchema?: z.ZodObject | Record<string, unknown> }).inputSchema;
+    schemas.set(name, inputSchema instanceof z.ZodObject ? inputSchema.shape : inputSchema);
     handlers.set(name, cb as Handler);
     return undefined as never;
   });

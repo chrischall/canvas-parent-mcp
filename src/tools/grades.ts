@@ -8,11 +8,10 @@ const argsSchema = z.object({
 });
 
 export function registerGradeTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_enrollments', {
     description: 'List active student enrollments with per-course grades (current_score, final_score, current_grade, final_grade, current grading period info).',
     annotations: { readOnlyHint: true },
-    inputSchema: argsSchema.shape,
+    inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);
     const path = buildPath(`/api/v1/${userSegment(args.observeeId)}/enrollments`, {

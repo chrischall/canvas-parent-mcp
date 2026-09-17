@@ -15,11 +15,10 @@ const missingArgs = z.object({
 });
 
 export function registerAssignmentTools(server: McpServer, client: CanvasClient): void {
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_assignments', {
     description: "List a course's assignments (with the user's submission inline). Supports the standard Canvas `bucket` filter.",
     annotations: { readOnlyHint: true },
-    inputSchema: listArgs.shape,
+    inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/courses/${encodeURIComponent(args.courseId)}/assignments`, {
@@ -31,11 +30,10 @@ export function registerAssignmentTools(server: McpServer, client: CanvasClient)
     return textContent(data);
   });
 
-  /* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
   server.registerTool('canvas_list_missing_submissions', {
     description: "List past-due unsubmitted assignments for the user (or a linked observee). For an observee, courseIds is required.",
     annotations: { readOnlyHint: true },
-    inputSchema: missingArgs.shape,
+    inputSchema: missingArgs,
   }, async (rawArgs) => {
     const args = missingArgs.parse(rawArgs);
     const path = buildPath(`/api/v1/${userSegment(args.observeeId)}/missing_submissions`, {

@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.6...v2.0.0) (2026-09-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** migrate server to SDK v2 ([#195](https://github.com/chrischall/canvas-parent-mcp/issues/195))
+
+### Features
+
+* **mcp:** migrate server to SDK v2 ([#195](https://github.com/chrischall/canvas-parent-mcp/issues/195)) ([a6313ec](https://github.com/chrischall/canvas-parent-mcp/commit/a6313ec530fe5705ddad07e8664f67b59783b712))
+
+
+### Bug Fixes
+
+* **build:** preserve Zod initialization in standalone bundle ([#198](https://github.com/chrischall/canvas-parent-mcp/issues/198)) ([8d67190](https://github.com/chrischall/canvas-parent-mcp/commit/8d671907fb9fd5c09470d573208e7d37a528a951))
+* **mcp:** verify SDK v2 tool registration ([#199](https://github.com/chrischall/canvas-parent-mcp/issues/199)) ([0f6b322](https://github.com/chrischall/canvas-parent-mcp/commit/0f6b322b81b7b4ff919d2ac41d522c0911cee0dd)), closes [#196](https://github.com/chrischall/canvas-parent-mcp/issues/196)
+
 ## [1.5.6](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.5...v1.5.6) (2026-09-15)
 
 

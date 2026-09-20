@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.1](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.0...v2.1.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **deps:** bump dotenv from 17.4.2 to 18.0.0 ([#205](https://github.com/chrischall/canvas-parent-mcp/issues/205)) ([7e8c80d](https://github.com/chrischall/canvas-parent-mcp/commit/7e8c80d641bea18379c8c8b4c8e0fbaaab4b82b0))
+* **deps:** bump zod from 4.6.2 to 4.6.5 in the production-dependencies group ([f5a54e7](https://github.com/chrischall/canvas-parent-mcp/commit/f5a54e76f10f4fe9e23d1fc7eafcdd916e5e70c2))
+
 ## [2.1.0](https://github.com/chrischall/canvas-parent-mcp/compare/v2.0.0...v2.1.0) (2026-09-19)
 
 

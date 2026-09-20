@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/chrischall/canvas-parent-mcp/compare/v2.0.0...v2.1.0) (2026-09-19)
+
+
+### Features
+
+* **deps:** take mcp-utils 1.0.0, restoring server/discover ([#200](https://github.com/chrischall/canvas-parent-mcp/issues/200)) ([93b27be](https://github.com/chrischall/canvas-parent-mcp/commit/93b27beca03fcc445aff8172a440f991ecf5baf9))
+
 ## [2.0.0](https://github.com/chrischall/canvas-parent-mcp/compare/v1.5.6...v2.0.0) (2026-09-17)
 
 

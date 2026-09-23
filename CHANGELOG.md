@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.3](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.2...v2.1.3) (2026-09-23)
+
+
+### Bug Fixes
+
+* **files:** pin canvas_download_file to Canvas file URLs and a download directory ([#210](https://github.com/chrischall/canvas-parent-mcp/issues/210)) ([6568ee7](https://github.com/chrischall/canvas-parent-mcp/commit/6568ee7ab3a7750433f8403c12d47c330c454a2f))
+
 ## [2.1.2](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.1...v2.1.2) (2026-09-23)
 
 

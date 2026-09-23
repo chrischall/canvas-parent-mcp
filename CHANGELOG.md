@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.2](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.1...v2.1.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deps:** require zod ^4.6.5 to match @chrischall/mcp-utils 2.4.0 ([#209](https://github.com/chrischall/canvas-parent-mcp/issues/209)) ([dbc7e89](https://github.com/chrischall/canvas-parent-mcp/commit/dbc7e899380d77bae334c2d2564771d8faeda9e1))
+* **deps:** upgrade @chrischall/mcp-utils to 2.4.0 and @fetchproxy/* to 3.2.0 ([#207](https://github.com/chrischall/canvas-parent-mcp/issues/207)) ([d90aa5a](https://github.com/chrischall/canvas-parent-mcp/commit/d90aa5aa0a1fbeba64a8564a817512fa9267ba59))
+
 ## [2.1.1](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.0...v2.1.1) (2026-09-20)
 
 

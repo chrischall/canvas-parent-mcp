@@ -217,7 +217,9 @@ curl -sL -H "Authorization: Bearer $CANVAS_TOKEN" "$FILE_URL" -o /path/to/destin
 ```
 
 `-L` follows Canvas's redirect to the actual file storage backend. The MCP's
-`canvas_download_file` tool additionally refuses to overwrite an existing
+`canvas_download_file` tool additionally only fetches `/files/` URLs on the
+`CANVAS_BASE_URL` host, only writes inside `CANVAS_OUTPUT_DIR` (default
+`~/Downloads`), refuses to overwrite an existing
 destination unless told to and validates the parent directory exists —
 replicate that yourself in a script if it matters (`[ -f dest ] && exit 1`,
 `[ -d "$(dirname dest)" ] || exit 1`).

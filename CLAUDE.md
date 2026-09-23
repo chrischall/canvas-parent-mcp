@@ -147,7 +147,7 @@ the student's work.
 - **String IDs:** request `Accept: application/json+canvas-string-ids, application/json` to avoid JS 2^53 issues.
 - **XSSI prefix:** some endpoints prepend `while(1);` to JSON — `parseJsonBody` strips it.
 - **Pagination:** RFC 5988 `Link: <...>; rel="next"`. `requestPaginated` follows `next` until exhausted or `maxPages` (default 50). `per_page` injected if absent (default 100).
-- **Downloads:** `download()` requires parent dir to exist; refuses to overwrite unless `overwrite: true`. Custom errors: `InvalidPathError`, `FileExistsError`, `ParentDirectoryMissingError`.
+- **Downloads:** `download()` pins the URL to the `CANVAS_BASE_URL` origin (https, `/files/<id>` path, no userinfo) before any auth is attached, and confines `destinationPath` (symlink-resolved) to `CANVAS_OUTPUT_DIR` / `~/Downloads`; it requires the parent dir to exist and refuses to overwrite unless `overwrite: true`. Custom errors: `DownloadUrlRejectedError`, `DownloadDestinationRejectedError`, `InvalidPathError`, `FileExistsError`, `ParentDirectoryMissingError`.
 - **5xx:** mapped to `CanvasUnreachableError`.
 
 ## Testing

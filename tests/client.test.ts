@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { mkdtemp, readFile, rm, writeFile as fsWriteFile } from 'fs/promises';
-import { tmpdir } from 'os';
+import { mkdtemp, readFile, rm, writeFile as fsWriteFile, symlink, mkdir } from 'fs/promises';
+import { tmpdir, homedir } from 'os';
 import { join } from 'path';
 import {
   CanvasClient, TokenExpiredError, CanvasUnreachableError,
   InvalidPathError, ParentDirectoryMissingError, FileExistsError,
+  DownloadUrlRejectedError, DownloadDestinationRejectedError,
   parseLinkHeader,
 } from '../src/client.js';
 import type { Account } from '../src/config.js';
@@ -26,7 +27,10 @@ function jsonRes(body: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(body), { status: 200, ...init, headers });
 }
 
-afterEach(() => vi.restoreAllMocks());
+// Downloads are confined to CANVAS_OUTPUT_DIR; the pre-existing download tests
+// write into mkdtemp() dirs under tmpdir(), so make that the allowed root.
+beforeEach(() => { vi.stubEnv('CANVAS_OUTPUT_DIR', tmpdir()); });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
 describe('TokenExpiredError', () => {
   it('formats a token-mode message', () => {
@@ -583,20 +587,20 @@ describe('CanvasClient.download', () => {
   it('falls back to application/octet-stream when content-type missing', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([0]), { status: 200 }));
     const c = new CanvasClient(tokenAccount);
-    const meta = await c.download('https://cms/x', join(dir, 'a.bin'));
+    const meta = await c.download('https://cms.instructure.com/files/9/download', join(dir, 'a.bin'));
     expect(meta.contentType).toBe('application/octet-stream');
   });
 
   it('throws InvalidPathError when destination is a directory', async () => {
     const c = new CanvasClient(tokenAccount);
-    await expect(c.download('https://cms/x', dir)).rejects.toBeInstanceOf(InvalidPathError);
+    await expect(c.download('https://cms.instructure.com/files/9/download', dir)).rejects.toBeInstanceOf(InvalidPathError);
   });
 
   it('throws FileExistsError when file exists and !overwrite', async () => {
     const dest = join(dir, 'exists.txt');
     await fsWriteFile(dest, 'old');
     const c = new CanvasClient(tokenAccount);
-    await expect(c.download('https://cms/x', dest)).rejects.toBeInstanceOf(FileExistsError);
+    await expect(c.download('https://cms.instructure.com/files/9/download', dest)).rejects.toBeInstanceOf(FileExistsError);
   });
 
   it('overwrites when overwrite:true', async () => {
@@ -604,27 +608,27 @@ describe('CanvasClient.download', () => {
     await fsWriteFile(dest, 'old');
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([9]), { status: 200 }));
     const c = new CanvasClient(tokenAccount);
-    await c.download('https://cms/x', dest, { overwrite: true });
+    await c.download('https://cms.instructure.com/files/9/download', dest, { overwrite: true });
     expect([...await readFile(dest)]).toEqual([9]);
   });
 
   it('throws ParentDirectoryMissingError when parent dir missing', async () => {
     const c = new CanvasClient(tokenAccount);
-    await expect(c.download('https://cms/x', join(dir, 'no-such-subdir', 'r.pdf')))
+    await expect(c.download('https://cms.instructure.com/files/9/download', join(dir, 'no-such-subdir', 'r.pdf')))
       .rejects.toBeInstanceOf(ParentDirectoryMissingError);
   });
 
   it('throws Canvas download 404 on 404', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 404 }));
     const c = new CanvasClient(tokenAccount);
-    await expect(c.download('https://cms/x', join(dir, 'r.pdf')))
+    await expect(c.download('https://cms.instructure.com/files/9/download', join(dir, 'r.pdf')))
       .rejects.toThrow('Canvas download 404');
   });
 
   it('throws Canvas download <status> on other failure', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 503 }));
     const c = new CanvasClient(tokenAccount);
-    await expect(c.download('https://cms/x', join(dir, 'r.pdf')))
+    await expect(c.download('https://cms.instructure.com/files/9/download', join(dir, 'r.pdf')))
       .rejects.toThrow('Canvas download 503');
   });
 
@@ -634,5 +638,105 @@ describe('CanvasClient.download', () => {
     const c = new CanvasClient(tokenAccount);
     await c.download('/api/v1/files/1/download', join(dir, 'r.pdf'));
     expect(fetchMock.mock.calls[0][0]).toBe('https://cms.instructure.com/api/v1/files/1/download');
+  });
+});
+
+describe('CanvasClient.download — origin pinning (fleet-audit#64)', () => {
+  let dir: string;
+  beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'canvas-sec-')); });
+  afterEach(async () => { await rm(dir, { recursive: true, force: true }); });
+
+  const rejected = [
+    ['a foreign https host', 'https://evil.example/files/1/download'],
+    ['plain http on the Canvas host', 'http://cms.instructure.com/files/1/download'],
+    ['the userinfo trick (absolute)', 'https://cms.instructure.com@evil.example/files/1/download'],
+    ['the userinfo trick (relative)', '@evil.example/files/1/download'],
+    ['a look-alike subdomain', 'https://cms.instructure.com.evil.example/files/1/download'],
+    ['a non-file Canvas path', 'https://cms.instructure.com/api/v1/users/self/profile'],
+    ['a non-http scheme', 'file:///etc/passwd'],
+    ['an unparseable URL', 'https://[not-a-host/files/1'],
+  ] as const;
+
+  for (const [label, url] of rejected) {
+    it(`rejects ${label} before any credential is attached`, async () => {
+      const fetchMock = vi.spyOn(globalThis, 'fetch');
+      const sessionLogin = vi.fn();
+      const c = new CanvasClient(sessionAccount(), { sessionLogin, outputDir: dir });
+      await expect(c.download(url, join(dir, 'r.pdf'))).rejects.toBeInstanceOf(DownloadUrlRejectedError);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(sessionLogin).not.toHaveBeenCalled();
+    });
+  }
+
+  it('accepts a course-scoped file URL on the Canvas origin', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    await c.download('https://cms.instructure.com/courses/5/files/7/download?download_frd=1', join(dir, 'r.pdf'));
+    expect(fetchMock.mock.calls[0][0]).toBe('https://cms.instructure.com/courses/5/files/7/download?download_frd=1');
+  });
+});
+
+describe('CanvasClient.download — destination confinement (fleet-audit#64)', () => {
+  let dir: string;
+  let outside: string;
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'canvas-out-'));
+    outside = await mkdtemp(join(tmpdir(), 'canvas-outside-'));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  });
+  const url = 'https://cms.instructure.com/files/1/download';
+
+  it('rejects an absolute destination outside the output dir without fetching', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    await expect(c.download(url, join(outside, 'x.pdf'))).rejects.toBeInstanceOf(DownloadDestinationRejectedError);
+    await expect(c.download(url, join(homedir(), '.zshrc'), { overwrite: true }))
+      .rejects.toBeInstanceOf(DownloadDestinationRejectedError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a ../ escape from the output dir', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    await expect(c.download(url, '../escape.pdf')).rejects.toBeInstanceOf(DownloadDestinationRejectedError);
+    await expect(c.download(url, join(dir, '..', 'escape.pdf'))).rejects.toBeInstanceOf(DownloadDestinationRejectedError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a symlinked subdirectory that points outside the output dir', async () => {
+    await symlink(outside, join(dir, 'link'));
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    await expect(c.download(url, join(dir, 'link', 'x.pdf'))).rejects.toBeInstanceOf(DownloadDestinationRejectedError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('resolves a relative destination inside the output dir', async () => {
+    await mkdir(join(dir, 'sub'));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([4, 2]), { status: 200 }));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    const meta = await c.download(url, join('sub', 'r.pdf'));
+    expect([...await readFile(join(dir, 'sub', 'r.pdf'))]).toEqual([4, 2]);
+    expect(meta.bytes).toBe(2);
+  });
+
+  it('falls back to CANVAS_OUTPUT_DIR when no outputDir option is given', async () => {
+    vi.stubEnv('CANVAS_OUTPUT_DIR', dir);
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const c = new CanvasClient(tokenAccount);
+    await expect(c.download(url, join(outside, 'x.pdf'))).rejects.toBeInstanceOf(DownloadDestinationRejectedError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('defaults to ~/Downloads when neither outputDir nor CANVAS_OUTPUT_DIR is set', async () => {
+    vi.stubEnv('CANVAS_OUTPUT_DIR', '');
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const c = new CanvasClient(tokenAccount);
+    await expect(c.download(url, join(dir, 'x.pdf'))).rejects.toThrow(join(homedir(), 'Downloads'));
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

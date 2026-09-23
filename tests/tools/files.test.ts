@@ -9,6 +9,8 @@ import { registerFileTools } from '../../src/tools/files.js';
 type Handler = (args: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }> }>;
 const account = { mode: 'token' as const, name: 'cms', baseUrl: 'https://cms.instructure.com', token: 't' };
 
+const configs = new Map<string, { description?: string; annotations?: Record<string, unknown> }>();
+
 function setup() {
   const client = new CanvasClient(account);
   const pagSpy = vi.spyOn(client, 'requestPaginated').mockResolvedValue([] as never);
@@ -17,8 +19,9 @@ function setup() {
   } as never);
   const server = new McpServer({ name: 'test', version: '0.0.0' });
   const handlers = new Map<string, Handler>();
-  vi.spyOn(server, 'registerTool').mockImplementation((name: string, _c: unknown, cb: unknown) => {
+  vi.spyOn(server, 'registerTool').mockImplementation((name: string, c: unknown, cb: unknown) => {
     handlers.set(name, cb as Handler);
+    configs.set(name, c as { description?: string; annotations?: Record<string, unknown> });
     return undefined as never;
   });
   registerFileTools(server, client);
@@ -67,5 +70,19 @@ describe('canvas_download_file', () => {
       url: 'https://cms/x', destinationPath: '/tmp/x', overwrite: true,
     });
     expect(dlSpy).toHaveBeenCalledWith('https://cms/x', '/tmp/x', { overwrite: true });
+  });
+});
+
+describe('canvas_download_file registration (fleet-audit#64)', () => {
+  it('is annotated destructive + open-world (it fetches a URL and writes to disk)', () => {
+    setup();
+    expect(configs.get('canvas_download_file')!.annotations).toMatchObject({
+      destructiveHint: true, openWorldHint: true,
+    });
+  });
+
+  it('tells the model the destination is confined to CANVAS_OUTPUT_DIR', () => {
+    setup();
+    expect(configs.get('canvas_download_file')!.description).toContain('CANVAS_OUTPUT_DIR');
   });
 });

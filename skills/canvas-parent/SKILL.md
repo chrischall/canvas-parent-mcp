@@ -85,7 +85,7 @@ Precedence when multiple are set: `CANVAS_TOKEN` > username/password > OAuth > f
 
 ### Files
 - `canvas_list_course_files(courseId)` — file metadata
-- `canvas_download_file(url, destinationPath)` — download a file to disk
+- `canvas_download_file(url, destinationPath)` — download a file to disk. `url` must be a `/files/` URL on the configured Canvas host; `destinationPath` must be inside `CANVAS_OUTPUT_DIR` (default `~/Downloads`), and a relative path is resolved against it
 
 ## Response shape (`view`)
 

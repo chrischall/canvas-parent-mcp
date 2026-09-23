@@ -10,8 +10,8 @@ const listArgs = z.object({
 });
 
 const downloadArgs = z.object({
-  url: z.string().describe('The url field returned by canvas_list_course_files (absolute https URL).'),
-  destinationPath: z.string().describe('Absolute path where the file should be written.'),
+  url: z.string().describe('The url field returned by canvas_list_course_files (an https /files/ URL on the configured Canvas host; anything else is refused).'),
+  destinationPath: z.string().describe('Where to write the file. Must be inside the download directory (CANVAS_OUTPUT_DIR, default ~/Downloads); a relative path is resolved against it.'),
   overwrite: z.boolean().optional(),
 });
 
@@ -31,8 +31,8 @@ export function registerFileTools(server: McpServer, client: CanvasClient): void
   });
 
   server.registerTool('canvas_download_file', {
-    description: "Download a Canvas file to disk. `url` is the absolute URL from canvas_list_course_files; `destinationPath` is required.",
-    annotations: { destructiveHint: true },
+    description: "Download a Canvas file to disk. `url` is the absolute URL from canvas_list_course_files (only file URLs on the configured Canvas host are accepted); `destinationPath` is required and must be inside the download directory (CANVAS_OUTPUT_DIR, default ~/Downloads).",
+    annotations: { destructiveHint: true, openWorldHint: true },
     inputSchema: downloadArgs,
   }, async (rawArgs) => {
     const args = downloadArgs.parse(rawArgs);

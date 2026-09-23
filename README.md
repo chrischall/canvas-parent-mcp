@@ -29,6 +29,8 @@ Mirrors the read-only parent-portal scope of sibling [`infinitecampus-mcp`](http
 
 Tools that the harness will gate as write/IO operations: `canvas_download_file`.
 
+`canvas_download_file` only fetches `/files/…` URLs on your `CANVAS_BASE_URL` host (https), so your Canvas credential is never sent anywhere else, and it only writes inside a download directory: `CANVAS_OUTPUT_DIR` if set, otherwise `~/Downloads`. A relative `destinationPath` is resolved against that directory.
+
 ## Configuration
 
 Set `CANVAS_BASE_URL` plus one of four auth modes. `canvas-parent-mcp` tries them in priority order:

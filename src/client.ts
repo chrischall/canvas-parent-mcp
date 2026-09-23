@@ -1,7 +1,10 @@
 import { writeFile, stat } from 'fs/promises';
 import { createSessionCache, reportCacheWriteFailure } from './session-cache.js';
-import { dirname } from 'path';
-import { createOAuth2Refresher, parseLinkHeader } from '@chrischall/mcp-utils';
+import { dirname, isAbsolute, join, resolve } from 'path';
+import { homedir } from 'os';
+import {
+  assertPathWithinRoots, createOAuth2Refresher, expandPath, parseLinkHeader, readEnvVar,
+} from '@chrischall/mcp-utils';
 import { CookieSessionManager } from '@chrischall/mcp-utils/session';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
 import { sessionLogin as defaultSessionLogin } from './session-login.js';
@@ -53,6 +56,8 @@ export class CanvasClient {
    * what keeps the path alive once the browser cookie lapses.
    */
   private refreshSession: (() => Promise<string>) | null;
+  /** Explicit download root; when unset, resolved per call (see {@link downloadRoot}). */
+  private outputDir: string | undefined;
   private auth: CookieSessionManager<CanvasAuth>;
   /** Lazily-built shared refresh_token exchanger (oauth mode only). */
   private oauthRefresh: ReturnType<typeof createOAuth2Refresher> | null = null;
@@ -69,9 +74,15 @@ export class CanvasClient {
    */
   constructor(
     account: Account,
-    opts: { sessionLogin?: SessionLoginFn; refreshSession?: () => Promise<string> } = {},
+    opts: {
+      sessionLogin?: SessionLoginFn;
+      refreshSession?: () => Promise<string>;
+      /** Directory downloads are confined to (default: CANVAS_OUTPUT_DIR, else ~/Downloads). */
+      outputDir?: string;
+    } = {},
   ) {
     this.account = account;
+    this.outputDir = opts.outputDir;
     this.sessionLoginFn = opts.sessionLogin ?? defaultSessionLogin;
     this.refreshSession = opts.refreshSession ?? null;
     this.auth = new CookieSessionManager<CanvasAuth>({
@@ -118,31 +129,86 @@ export class CanvasClient {
     return out;
   }
 
+  /**
+   * Download a Canvas file to disk.
+   *
+   * Both inputs arrive from tool arguments, which a prompt injection in
+   * classmate/teacher-authored Canvas content can steer, so both are pinned
+   * BEFORE any credential is attached:
+   *  - `path` must resolve to the configured Canvas origin (https, same host —
+   *    the `https://canvas@evil/` userinfo trick parses to a foreign host and is
+   *    refused) and name a `/files/<id>` resource. Only the initial request is
+   *    pinned: Canvas legitimately redirects to its file store, and fetch
+   *    strips Authorization/Cookie on a cross-origin redirect.
+   *  - `destinationPath` must lie inside the download root (see
+   *    {@link downloadRoot}), checked through symlinks; a relative path is
+   *    resolved against that root.
+   */
   async download(
     path: string, destinationPath: string,
     opts: { overwrite?: boolean } = {},
   ): Promise<{ path: string; bytes: number; contentType: string }> {
+    const url = this.pinDownloadUrl(path);
+    const dest = this.confineDestination(destinationPath);
+
     let destStat: Awaited<ReturnType<typeof stat>> | null = null;
-    try { destStat = await stat(destinationPath); } catch { /* not present, ok */ }
+    try { destStat = await stat(dest); } catch { /* not present, ok */ }
     if (destStat?.isDirectory()) throw new InvalidPathError(destinationPath);
     if (destStat && !opts.overwrite) throw new FileExistsError(destinationPath);
 
-    const parent = dirname(destinationPath);
+    const parent = dirname(dest);
     try { await stat(parent); } catch { throw new ParentDirectoryMissingError(parent); }
 
-    const url = /^https?:\/\//i.test(path) ? path : `${this.account.baseUrl}${path}`;
     const res = await this.authedFetch(url, {});
     if (res.status === 401) throw new TokenExpiredError(this.account.mode);
     if (res.status === 404) throw new Error(`Canvas download 404 for ${path}`);
     if (!res.ok) throw new Error(`Canvas download ${res.status} for ${path}`);
 
     const buf = new Uint8Array(await res.arrayBuffer());
-    await writeFile(destinationPath, buf);
+    await writeFile(dest, buf);
     return {
-      path: destinationPath,
+      path: dest,
       bytes: buf.byteLength,
       contentType: res.headers.get('content-type') ?? 'application/octet-stream',
     };
+  }
+
+  /**
+   * The directory downloads are confined to: the constructor's `outputDir`,
+   * else `CANVAS_OUTPUT_DIR`, else `~/Downloads`. Read per call so an env
+   * change needs no client rebuild.
+   */
+  private downloadRoot(): string {
+    return expandPath(this.outputDir ?? readEnvVar('CANVAS_OUTPUT_DIR') ?? join(homedir(), 'Downloads'));
+  }
+
+  private confineDestination(destinationPath: string): string {
+    const root = this.downloadRoot();
+    // `~` expands to home; any other relative path is anchored at the root
+    // (not the process cwd, which for a desktop-launched server is often `/`).
+    const candidate = destinationPath.startsWith('~') || isAbsolute(destinationPath)
+      ? expandPath(destinationPath)
+      : resolve(root, destinationPath);
+    try {
+      assertPathWithinRoots(candidate, [root]);
+    } catch {
+      throw new DownloadDestinationRejectedError(destinationPath, root);
+    }
+    return candidate;
+  }
+
+  private pinDownloadUrl(path: string): string {
+    const raw = /^[a-z][a-z0-9+.-]*:/i.test(path) ? path : `${this.account.baseUrl}${path}`;
+    let parsed: URL;
+    try { parsed = new URL(raw); } catch { throw new DownloadUrlRejectedError(path, 'not a valid URL'); }
+    const origin = new URL(this.account.baseUrl).origin;
+    if (parsed.protocol !== 'https:' || parsed.origin !== origin || parsed.username || parsed.password) {
+      throw new DownloadUrlRejectedError(path, `must be an https URL on ${origin}`);
+    }
+    if (!/\/files\/[^/]+/.test(parsed.pathname)) {
+      throw new DownloadUrlRejectedError(path, 'must name a Canvas file (a /files/<id> path)');
+    }
+    return parsed.href;
   }
 
   private async doRawRequest(path: string, opts: RequestOpts): Promise<Response> {
@@ -305,6 +371,21 @@ export class CanvasUnreachableError extends Error {
   }
 }
 
+export class DownloadUrlRejectedError extends Error {
+  constructor(public url: string, reason: string) {
+    super(`DownloadUrlRejected: ${reason}; use the \`url\` from canvas_list_course_files. Got: ${url}`);
+    this.name = 'DownloadUrlRejectedError';
+  }
+}
+export class DownloadDestinationRejectedError extends Error {
+  constructor(public path: string, public root: string) {
+    super(
+      `DownloadDestinationRejected: destinationPath must be inside ${root} ` +
+        `(set CANVAS_OUTPUT_DIR to change it). Got: ${path}`,
+    );
+    this.name = 'DownloadDestinationRejectedError';
+  }
+}
 export class InvalidPathError extends Error {
   constructor(public path: string) {
     super(`InvalidPath: destinationPath must be a filename, not a directory: ${path}`);

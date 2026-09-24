@@ -50,3 +50,12 @@ describe('canvas_get_conversation', () => {
     expect(url).toContain('include%5B%5D=participant_avatars');
   });
 });
+
+describe('canvas_get_conversation — read-only for real (fleet-audit#926)', () => {
+  it('passes auto_mark_as_read=false so fetching a thread never flips it to read', async () => {
+    const { handlers, reqSpy } = setup();
+    await handlers.get('canvas_get_conversation')!({ id: '42' });
+    const url = reqSpy.mock.calls[0][0] as string;
+    expect(url).toContain('auto_mark_as_read=false');
+  });
+});

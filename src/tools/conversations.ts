@@ -32,12 +32,16 @@ export function registerConversationTools(server: McpServer, client: CanvasClien
   });
 
   server.registerTool('canvas_get_conversation', {
-    description: 'Get a full Canvas conversation thread with all messages.',
+    description: 'Get a full Canvas conversation thread with all messages. Read-only: does not mark the conversation as read.',
     annotations: { readOnlyHint: true },
     inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);
+    // Canvas marks a conversation read on GET unless told otherwise; pin it
+    // off so this tool honours its readOnlyHint and never sends the parent's
+    // read receipt to the teacher on a model's behalf (fleet-audit#926).
     const path = buildPath(`/api/v1/conversations/${encodeURIComponent(args.id)}`, {
+      auto_mark_as_read: false,
       'include[]': ['participant_avatars'],
     });
     const data = await client.request(path);

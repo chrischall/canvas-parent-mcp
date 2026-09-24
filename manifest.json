@@ -139,7 +139,7 @@
     },
     {
       "name": "canvas_get_conversation",
-      "description": "Get a full conversation thread with all messages"
+      "description": "Get a full conversation thread with all messages (does not mark it read)"
     },
     {
       "name": "canvas_list_discussion_topics",

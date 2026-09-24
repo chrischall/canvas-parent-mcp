@@ -1,4 +1,5 @@
-import { writeFile, stat } from 'fs/promises';
+import { constants as fsConstants } from 'fs';
+import { lstat, open, stat } from 'fs/promises';
 import { createSessionCache, reportCacheWriteFailure } from './session-cache.js';
 import { dirname, isAbsolute, join, resolve } from 'path';
 import { homedir } from 'os';
@@ -151,8 +152,11 @@ export class CanvasClient {
     const url = this.pinDownloadUrl(path);
     const dest = this.confineDestination(destinationPath);
 
-    let destStat: Awaited<ReturnType<typeof stat>> | null = null;
-    try { destStat = await stat(dest); } catch { /* not present, ok */ }
+    // lstat, not stat: a symlink at the final component is refused outright
+    // rather than judged by whatever it points at.
+    let destStat: Awaited<ReturnType<typeof lstat>> | null = null;
+    try { destStat = await lstat(dest); } catch { /* not present, ok */ }
+    if (destStat?.isSymbolicLink()) throw new InvalidPathError(destinationPath, 'is a symlink');
     if (destStat?.isDirectory()) throw new InvalidPathError(destinationPath);
     if (destStat && !opts.overwrite) throw new FileExistsError(destinationPath);
 
@@ -165,7 +169,7 @@ export class CanvasClient {
     if (!res.ok) throw new Error(`Canvas download ${res.status} for ${path}`);
 
     const buf = new Uint8Array(await res.arrayBuffer());
-    await writeFile(dest, buf);
+    await writeConfined(dest, destinationPath, buf, opts.overwrite === true);
     return {
       path: dest,
       bytes: buf.byteLength,
@@ -386,9 +390,41 @@ export class DownloadDestinationRejectedError extends Error {
     this.name = 'DownloadDestinationRejectedError';
   }
 }
+/**
+ * Write a download to its (already confined) destination without ever
+ * following a symlink at the final path component (fleet-audit#925). The
+ * pre-flight lstat in download() is separated from this write by a network
+ * fetch, so a link can be planted in between; O_NOFOLLOW makes the open itself
+ * refuse it (ELOOP), and O_EXCL (without overwrite) refuses anything that
+ * appeared at all. New files are created owner-only (0600): they are a
+ * student's school records.
+ */
+async function writeConfined(
+  dest: string, requested: string, buf: Uint8Array, overwrite: boolean,
+): Promise<void> {
+  // O_NOFOLLOW is POSIX-only: on Windows it is undefined, which `|` coerces to 0.
+  const { O_WRONLY, O_CREAT, O_TRUNC, O_EXCL, O_NOFOLLOW } = fsConstants;
+  const flags = O_WRONLY | O_CREAT | O_NOFOLLOW | (overwrite ? O_TRUNC : O_EXCL);
+  let handle;
+  try {
+    handle = await open(dest, flags, 0o600);
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === 'ELOOP') throw new InvalidPathError(requested, 'is a symlink');
+    if (code === 'EEXIST') throw new FileExistsError(requested);
+    if (code === 'EISDIR') throw new InvalidPathError(requested);
+    throw e;
+  }
+  try {
+    await handle.writeFile(buf);
+  } finally {
+    await handle.close();
+  }
+}
+
 export class InvalidPathError extends Error {
-  constructor(public path: string) {
-    super(`InvalidPath: destinationPath must be a filename, not a directory: ${path}`);
+  constructor(public path: string, reason = 'must be a filename, not a directory') {
+    super(`InvalidPath: destinationPath ${reason}: ${path}`);
     this.name = 'InvalidPathError';
   }
 }

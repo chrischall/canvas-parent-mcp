@@ -804,6 +804,31 @@ describe('CanvasClient.download — symlink-safe write (fleet-audit#925)', () =>
     expect(await readFile(other, 'utf8')).toBe('keep');
   });
 
+  it('refuses a directory planted mid-fetch with overwrite:true (EISDIR)', async () => {
+    const dest = join(dir, 'r.pdf');
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
+      await mkdir(dest);
+      return new Response(new Uint8Array([6, 6, 6]), { status: 200 });
+    });
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    const err = await c.download(url, dest, { overwrite: true }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(InvalidPathError);
+    expect((err as Error).message).toMatch(/not a directory/);
+    expect((await stat(dest)).isDirectory()).toBe(true);
+  });
+
+  it('rethrows other open() failures unchanged (parent removed mid-fetch)', async () => {
+    const sub = join(dir, 'sub');
+    await mkdir(sub);
+    const dest = join(sub, 'r.pdf');
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
+      await rm(sub, { recursive: true, force: true });
+      return new Response(new Uint8Array([6, 6, 6]), { status: 200 });
+    });
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    await expect(c.download(url, dest)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('creates new downloads owner-only (0600)', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));
     const c = new CanvasClient(tokenAccount, { outputDir: dir });

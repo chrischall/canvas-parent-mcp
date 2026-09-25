@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.4](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.3...v2.1.4) (2026-09-25)
+
+
+### Bug Fixes
+
+* **deps:** bump dotenv from 18.0.0 to 18.0.2 in the production-dependencies group ([#214](https://github.com/chrischall/canvas-parent-mcp/issues/214)) ([cdbf6e8](https://github.com/chrischall/canvas-parent-mcp/commit/cdbf6e80bf7e5ef63704b59417551834a77985a6))
+
 ## [2.1.3](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.2...v2.1.3) (2026-09-23)
 
 

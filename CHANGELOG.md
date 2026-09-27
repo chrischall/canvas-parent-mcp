@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.5](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.4...v2.1.5) (2026-09-27)
+
+
+### Bug Fixes
+
+* **deps:** bump dotenv from 18.0.2 to 18.0.3 in the production-dependencies group ([#223](https://github.com/chrischall/canvas-parent-mcp/issues/223)) ([bf4d875](https://github.com/chrischall/canvas-parent-mcp/commit/bf4d8758bc5853efdfd0a6504e801273f6144f59))
+* **deps:** move to [@fetchproxy](https://github.com/fetchproxy) 3.4 for ContextMint Bridge errors, capability subsets and managed pins ([#218](https://github.com/chrischall/canvas-parent-mcp/issues/218)) ([7eed515](https://github.com/chrischall/canvas-parent-mcp/commit/7eed515ffbc34fd7627fd422cd55e8afe5687ef9))
+* **deps:** move to @chrischall/mcp-utils 2.8 and [@fetchproxy](https://github.com/fetchproxy) 3.4.1 for clearer browser-bridge errors ([#221](https://github.com/chrischall/canvas-parent-mcp/issues/221)) ([ca31879](https://github.com/chrischall/canvas-parent-mcp/commit/ca3187975bda8fd3afe2dcbd16589cef5a4c5861))
+
 ## [2.1.4](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.3...v2.1.4) (2026-09-25)
 
 

@@ -38,7 +38,7 @@ Set `CANVAS_BASE_URL` plus one of four auth modes. `canvas-parent-mcp` tries the
 1. **`CANVAS_TOKEN`** → personal access token
 2. **`CANVAS_CLIENT_ID` + `CANVAS_CLIENT_SECRET` + `CANVAS_REFRESH_TOKEN`** → OAuth
 3. **`CANVAS_USERNAME` + `CANVAS_PASSWORD`** → session-scrape (direct Canvas accounts only)
-4. **fetchproxy fallback** → no env vars needed; reads `canvas_session` + `pseudonym_credentials` cookies from your signed-in Canvas tab via the [fetchproxy](https://github.com/chrischall/fetchproxy) browser extension
+4. **fetchproxy fallback** → no env vars needed; reads `canvas_session` + `pseudonym_credentials` cookies from your signed-in Canvas tab via the [ContextMint Bridge](https://github.com/nullnet-app/contextmint-bridge/releases) browser extension
 
 If none succeed, you get an error that names every escape hatch.
 
@@ -48,7 +48,13 @@ If none succeed, you get an error that names every escape hatch.
 CANVAS_BASE_URL=https://cms.instructure.com
 ```
 
-Install the fetchproxy 0.3.0 Chrome / Safari extension (Chrome Web Store / Safari `.dmg`), sign into your Canvas instance once, and the MCP reads your session cookies at startup. After that, all Canvas API calls go directly from Node — the extension is **not** in the request hot path. Works with any auth flow (SSO/SAML/2FA included) because Canvas itself handled the sign-in.
+Install the ContextMint Bridge browser extension from its [releases page](https://github.com/nullnet-app/contextmint-bridge/releases) (Chrome: download the chrome zip, unzip it, and load it unpacked at `chrome://extensions` with Developer mode on — there is no Chrome Web Store listing yet; Safari: not available yet — it will ship inside the ContextMint app, which has no public download yet, so use Chrome for now), sign into your Canvas instance once, and the MCP reads your session cookies at startup. After that, all Canvas API calls go directly from Node — the extension is **not** in the request hot path. Works with any auth flow (SSO/SAML/2FA included) because Canvas itself handled the sign-in.
+
+> **Where the extension comes from.** ContextMint Bridge is the fetchproxy browser extension under its new name, from the same maintainer — fetchproxy's own README ([Extension](https://github.com/chrischall/fetchproxy#extension)) points to it. Its source is public at [nullnet-app/contextmint-bridge](https://github.com/nullnet-app/contextmint-bridge): build it yourself (`npm run build`, per its README), or check a release zip against the `.sha256` file published beside it:
+>
+> ```bash
+> shasum -a 256 -c contextmint-bridge-chrome-<version>.zip.sha256
+> ```
 
 Multiple districts? Declared domain `instructure.com` matches every `*.instructure.com` host, so you only pair the extension once. The MCP uses whichever district you set in `CANVAS_BASE_URL`.
 

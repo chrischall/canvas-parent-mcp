@@ -338,7 +338,7 @@ describe('resolveAuth', () => {
       });
       bootstrapMock.mockRejectedValue(downErr);
 
-      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/fetchproxy bridge is down/);
+      await expect((await resolveAuth()).refresh!()).rejects.toThrow(/ContextMint Bridge is down/);
       await expect((await resolveAuth()).refresh!()).rejects.toThrow(downErr.hint.slice(0, 20));
     });
 

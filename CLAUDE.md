@@ -52,9 +52,11 @@ CANVAS_BASE_URL=https://cms.instructure.com   # required, must be https
 CANVAS_NAME=cms                                # optional, defaults to host
 
 # Mode A — fetchproxy fallback (recommended, zero-config).
-# Leave all CANVAS_* auth vars unset. Install the fetchproxy browser
+# Leave all CANVAS_* auth vars unset. Install the ContextMint Bridge browser
 # extension, sign into your Canvas instance once. The MCP reads
 # `canvas_session` + `pseudonym_credentials` from your tab at startup.
+# (ContextMint Bridge = the fetchproxy extension renamed, same maintainer;
+# source: github.com/nullnet-app/contextmint-bridge, each release zip has a .sha256.)
 CANVAS_DISABLE_FETCHPROXY=  # set to "1" to opt out
 
 # Mode B — username/password session-scrape (legacy). Direct Canvas

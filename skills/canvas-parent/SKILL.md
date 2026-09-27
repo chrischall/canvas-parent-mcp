@@ -42,7 +42,7 @@ npm install && npm run build
 
 ## Authentication
 
-**fetchproxy fallback (recommended, zero-config).** Set only `CANVAS_BASE_URL`. Install the [ContextMint Bridge](https://github.com/nullnet-app/contextmint-bridge/releases) browser extension, sign into your Canvas instance once. The MCP reads `canvas_session` + `pseudonym_credentials` cookies from your tab at startup; all API calls go directly from Node after that. Works with any auth flow (SSO/SAML/2FA included).
+**fetchproxy fallback (recommended, zero-config).** Set only `CANVAS_BASE_URL`. Install the [ContextMint Bridge](https://github.com/nullnet-app/contextmint-bridge/releases) browser extension, sign into your Canvas instance once. The MCP reads `canvas_session` + `pseudonym_credentials` cookies from your tab at startup; all API calls go directly from Node after that. Works with any auth flow (SSO/SAML/2FA included). It's the fetchproxy extension under its new name, same maintainer ([fetchproxy's README](https://github.com/chrischall/fetchproxy#extension) points to it); verify a release zip with `shasum -a 256 -c <zip>.sha256` or build it from [source](https://github.com/nullnet-app/contextmint-bridge).
 
 ### Alternatives (env-var)
 

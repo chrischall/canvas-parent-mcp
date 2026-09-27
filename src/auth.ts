@@ -174,7 +174,7 @@ export async function resolveAuth(): Promise<ResolvedAuth> {
     'Missing Canvas auth config. Set one of: CANVAS_TOKEN (personal access token), ' +
       'CANVAS_USERNAME+CANVAS_PASSWORD (auto-login), ' +
       'all three of CANVAS_CLIENT_ID, CANVAS_CLIENT_SECRET, CANVAS_REFRESH_TOKEN (OAuth), ' +
-      'or install the fetchproxy extension and sign into your Canvas instance ' +
+      'or install the ContextMint Bridge browser extension and sign into your Canvas instance ' +
       '(unset CANVAS_DISABLE_FETCHPROXY if it is set).',
   );
 }
@@ -258,7 +258,7 @@ async function liftBrowserCookie(declaredDomain: string, baseHost: string): Prom
       throw new Error(
         `required cookies not found on ${baseHost}. ` +
           'Sign into your Canvas instance in the browser ' +
-          '(with the fetchproxy extension installed) and retry.',
+          '(with the ContextMint Bridge extension installed) and retry.',
       );
     }
     return `canvas_session=${canvasSession}; pseudonym_credentials=${pseudoCreds}`;
@@ -270,7 +270,7 @@ async function liftBrowserCookie(declaredDomain: string, baseHost: string): Prom
     if (classifyBridgeError(e) === 'bridge_down') {
       const downErr = e as FetchproxyBridgeDownError;
       throw new Error(
-        `Canvas auth: fetchproxy bridge is down (extension service worker unreachable after retry). ${downErr.hint}`,
+        `Canvas auth: ContextMint Bridge is down (extension service worker unreachable after retry). ${downErr.hint}`,
       );
     }
     const msg = e instanceof Error ? e.message : String(e);

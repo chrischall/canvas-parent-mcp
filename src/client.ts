@@ -4,7 +4,7 @@ import { createSessionCache, reportCacheWriteFailure } from './session-cache.js'
 import { dirname, isAbsolute, join, resolve } from 'path';
 import { homedir } from 'os';
 import {
-  assertPathWithinRoots, createOAuth2Refresher, EdgeBlockedError, expandPath, parseLinkHeader, readEnvVar,
+  assertPathWithinRoots, createOAuth2Refresher, detectEdgeBlock, EdgeBlockedError, expandPath, parseLinkHeader, readEnvVar,
 } from '@chrischall/mcp-utils';
 import { CookieSessionManager } from '@chrischall/mcp-utils/session';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
@@ -164,6 +164,7 @@ export class CanvasClient {
     try { await stat(parent); } catch { throw new ParentDirectoryMissingError(parent); }
 
     const res = await this.authedFetch(url, {});
+    await throwIfEdgeBlocked(res, 'GET', path);
     if (res.status === 401) throw new TokenExpiredError(this.account.mode);
     if (res.status === 404) throw new Error(`Canvas download 404 for ${path}`);
     if (!res.ok) throw new Error(`Canvas download ${res.status} for ${path}`);
@@ -226,6 +227,10 @@ export class CanvasClient {
       body: opts.body,
     });
 
+    // A CDN/WAF refusal page is not Canvas judging the credential: say so
+    // before the status mapping below calls a 401 an expired token (or a 503
+    // challenge "unreachable") — chrischall/mcp-host#1015.
+    await throwIfEdgeBlocked(res, opts.method ?? 'GET', path);
     if (res.status === 401) throw new TokenExpiredError(this.account.mode);
     if (res.status === 404) throw new Error(`Canvas 404 ${path}`);
     if (res.status >= 500) throw new CanvasUnreachableError(res.status);
@@ -350,6 +355,27 @@ function parseJsonBody<T>(text: string): T | null {
   if (!text) return null;
   const stripped = text.replace(/^while\(1\);/, '');
   return JSON.parse(stripped) as T;
+}
+
+/**
+ * Throw {@link EdgeBlockedError} when a non-OK response is a CDN/WAF refusal
+ * page rather than Canvas's own answer. The body is read from a clone so the
+ * caller's copy stays readable for its own error mapping; a JSON body is never
+ * a refusal page, so it is not read at all.
+ */
+async function throwIfEdgeBlocked(res: Response, method: string, path: string): Promise<void> {
+  if (res.ok) return;
+  let body = '';
+  if (!/json/i.test(res.headers.get('content-type') ?? '')) {
+    try { body = await res.clone().text(); } catch { /* unreadable: judge on headers alone */ }
+  }
+  const hit = detectEdgeBlock({ status: res.status, body, headers: res.headers });
+  if (hit) throw new EdgeBlockedError(res.status, hit.vendor, { service: 'Canvas', method, path: redactPath(path) });
+}
+
+/** A request target without its query string (a pagination URL can carry ids/cursors). */
+function redactPath(pathOrUrl: string): string {
+  return pathOrUrl.split('?')[0];
 }
 
 /** Inject ?per_page=N into a path, preserving existing query. No-op if already set. */

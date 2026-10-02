@@ -8,7 +8,7 @@ import {
 } from '@chrischall/mcp-utils';
 import { CookieSessionManager } from '@chrischall/mcp-utils/session';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
-import { sessionLogin as defaultSessionLogin } from './session-login.js';
+import { sessionLogin as defaultSessionLogin, withBodyPreview } from './session-login.js';
 
 // Re-export the fleet-shared RFC 5988 Link parser so existing importers
 // (`tests/client.test.ts`, and any sibling that pulled it from here) keep
@@ -229,7 +229,7 @@ export class CanvasClient {
     if (res.status === 401) throw new TokenExpiredError(this.account.mode);
     if (res.status === 404) throw new Error(`Canvas 404 ${path}`);
     if (res.status >= 500) throw new CanvasUnreachableError(res.status);
-    if (!res.ok) throw new Error(`Canvas ${res.status} ${res.statusText} for ${path}`);
+    if (!res.ok) throw withBodyPreview(new Error(`Canvas ${res.status} ${res.statusText} for ${path}`), await res.text());
     return res;
   }
 

@@ -151,6 +151,7 @@ the student's work.
 - **Pagination:** RFC 5988 `Link: <...>; rel="next"`. `requestPaginated` follows `next` until exhausted or `maxPages` (default 50). `per_page` injected if absent (default 100).
 - **Downloads:** `download()` pins the URL to the `CANVAS_BASE_URL` origin (https, `/files/<id>` path, no userinfo) before any auth is attached, and confines `destinationPath` (symlink-resolved) to `CANVAS_OUTPUT_DIR` / `~/Downloads`; it requires the parent dir to exist and refuses to overwrite unless `overwrite: true`. The write itself goes through `writeConfined()` — `open(O_NOFOLLOW | (overwrite ? O_TRUNC : O_EXCL), 0o600)` — so a symlink planted at the destination during the fetch is refused (`InvalidPathError`) instead of followed. Custom errors: `DownloadUrlRejectedError`, `DownloadDestinationRejectedError`, `InvalidPathError`, `FileExistsError`, `ParentDirectoryMissingError`.
 - **5xx:** mapped to `CanvasUnreachableError`.
+- **Other 4xx (and a failed login-page GET):** the thrown error keeps its short message and carries a redacted, bounded `bodyPreview` (`withBodyPreview`), which mcp-utils' credential healthcheck reads — so a CDN/WAF refusal page reports `edge_blocked`, not a credential or network failure. Don't drop it.
 
 ## Testing
 

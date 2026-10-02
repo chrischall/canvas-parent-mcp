@@ -16,7 +16,7 @@
 // `name=value; …` semantics the hand-rolled helpers here used to implement,
 // plus deletion-marker handling).
 
-import { CookieJar, parseCookieJar } from '@chrischall/mcp-utils';
+import { CookieJar, parseCookieJar, truncateErrorMessage } from '@chrischall/mcp-utils';
 
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
@@ -27,6 +27,16 @@ export class SessionLoginError extends Error {
     super(message);
     this.name = 'SessionLoginError';
   }
+}
+
+/**
+ * Attach a bounded, redacted excerpt of a non-2xx body as `bodyPreview`,
+ * leaving the message alone. mcp-utils' credential healthcheck reads that
+ * field, so a CDN/WAF refusal page in front of Canvas reports as
+ * `edge_blocked` rather than as a credential or network problem.
+ */
+export function withBodyPreview<E extends Error>(err: E, body: string): E & { bodyPreview: string } {
+  return Object.assign(err, { bodyPreview: truncateErrorMessage(body) });
 }
 
 export function extractAuthenticityToken(html: string): string | null {
@@ -68,8 +78,9 @@ export async function sessionLogin(opts: {
     },
   });
   if (!getRes.ok) {
-    throw new SessionLoginError(
-      `Login page fetch failed: ${getRes.status} ${getRes.statusText}`,
+    throw withBodyPreview(
+      new SessionLoginError(`Login page fetch failed: ${getRes.status} ${getRes.statusText}`),
+      await getRes.text(),
     );
   }
   const html = await getRes.text();

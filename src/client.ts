@@ -4,7 +4,7 @@ import { createSessionCache, reportCacheWriteFailure } from './session-cache.js'
 import { dirname, isAbsolute, join, resolve } from 'path';
 import { homedir } from 'os';
 import {
-  assertPathWithinRoots, createOAuth2Refresher, expandPath, parseLinkHeader, readEnvVar,
+  assertPathWithinRoots, createOAuth2Refresher, EdgeBlockedError, expandPath, parseLinkHeader, readEnvVar,
 } from '@chrischall/mcp-utils';
 import { CookieSessionManager } from '@chrischall/mcp-utils/session';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
@@ -330,7 +330,11 @@ export class CanvasClient {
       accessToken = result.accessToken;
       expiresIn = result.expiresIn ?? 3600;
     } catch (e) {
-      // The refresher always throws Error (McpToolError) with a pre-redacted,
+      // A CDN/WAF refused the token POST: nothing judged the OAuth credentials,
+      // so pass the block through untouched (the healthcheck reports it as
+      // `edge_blocked`) rather than blaming CANVAS_CLIENT_ID et al.
+      if (e instanceof EdgeBlockedError) throw e;
+      // Otherwise the refresher throws Error (McpToolError) with a pre-redacted,
       // pre-truncated message — safe to embed as the TokenExpiredError detail.
       throw new TokenExpiredError('oauth', (e as Error).message);
     }

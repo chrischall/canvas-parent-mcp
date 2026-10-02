@@ -9,6 +9,7 @@ import {
   parseLinkHeader,
 } from '../src/client.js';
 import type { Account } from '../src/config.js';
+import { EdgeBlockedError } from '@chrischall/mcp-utils';
 
 const tokenAccount: Account = {
   mode: 'token', name: 'cms', baseUrl: 'https://cms.instructure.com', token: 'tok_abc',
@@ -432,6 +433,23 @@ describe('CanvasClient.request (oauth mode)', () => {
       .mockResolvedValueOnce(new Response('bad', { status: 401 }));
     const c = new CanvasClient(oauthAccount());
     await expect(c.request('/x')).rejects.toThrow(/Canvas OAuth refresh failed.*401/);
+  });
+
+  // mcp-utils 2.10.0's refresher throws EdgeBlockedError when a CDN/WAF refuses
+  // the token POST: nothing judged the OAuth credentials, so wrapping it as a
+  // TokenExpiredError ("check CANVAS_CLIENT_ID…") would send the user after
+  // credentials that are fine and hide `edge_blocked` from the healthcheck.
+  it('surfaces a CDN/WAF block on the refresh POST as EdgeBlockedError, not TokenExpiredError', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response('<html><head><title>Attention Required! | Cloudflare</title></head></html>', {
+        status: 403,
+        headers: { 'Content-Type': 'text/html' },
+      }),
+    );
+    const c = new CanvasClient(oauthAccount());
+    const err = await c.request('/x').catch((e) => e as Error);
+    expect(err).toBeInstanceOf(EdgeBlockedError);
+    expect(err).not.toBeInstanceOf(TokenExpiredError);
   });
 
   it('redacts credentials from a refresh-error body before surfacing it', async () => {

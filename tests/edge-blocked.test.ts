@@ -2,6 +2,12 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createTestHarness, parseToolResult } from '@chrischall/mcp-utils/test';
 import { registerHealthcheckTools } from '../src/tools/healthcheck.js';
 import type { ResolvedAuth } from '../src/auth.js';
+import { mkdtemp, rm } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { EdgeBlockedError } from '@chrischall/mcp-utils';
+import { CanvasClient, TokenExpiredError, CanvasUnreachableError } from '../src/client.js';
+import type { Account } from '../src/config.js';
 
 /**
  * A CDN/WAF block is not a rejected credential (mcp-host#1015).
@@ -90,6 +96,166 @@ describe('a CloudFront block reads as edge_blocked, not a rejected credential', 
       account: { mode: 'token', name: 'x', baseUrl: BASE, token: 'tok' },
     });
 
+    expect(r.ok).toBe(false);
+    expect(r.error?.kind).not.toBe('edge_blocked');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The client itself (chrischall/mcp-host#1015 round 2): `doRawRequest` and
+// `download` mapped EVERY final 401 to TokenExpiredError ("Check CANVAS_TOKEN
+// — it may be expired or revoked"), so a 401 refusal page from the edge sent
+// the user off to rotate a credential nothing had judged.
+// ---------------------------------------------------------------------------
+
+// The same CloudFront page, served with a 401 (CloudFront passes the WAF
+// rule's configured status through, and some distributions answer 401).
+function blocked401(): Response {
+  return new Response(CLOUDFRONT_BLOCK, {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: { 'content-type': 'text/html', 'x-cache': 'Error from cloudfront', server: 'CloudFront' },
+  });
+}
+
+// Cloudflare's managed-challenge interstitial, as served (trimmed, ids made up).
+const CLOUDFLARE_CHALLENGE =
+  '<!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title>' +
+  '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body>' +
+  '<div class="main-wrapper" role="main"><div class="main-content"><h1 class="zone-name-title h1">school.instructure.com</h1>' +
+  '<h2 class="h2" id="challenge-running">Checking if the site connection is secure</h2>' +
+  '<noscript><div id="challenge-error-title">Enable JavaScript and cookies to continue</div></noscript></div></div>' +
+  '<script>(function(){window._cf_chl_opt={cvId: \'3\',cZone: "school.instructure.com",cType: \'managed\'};}());</script>' +
+  '<div class="footer" role="contentinfo"><div class="footer-inner"><div class="clearfix diagnostic-wrapper">' +
+  '<div class="ray-id">Ray ID: <code>8a1b2c3d4e5f6789</code></div></div>' +
+  '<div class="text-center" id="footer-text">Performance &amp; security by Cloudflare</div></div></div></body></html>';
+
+function challenge(status: number): Response {
+  return new Response(CLOUDFLARE_CHALLENGE, {
+    status,
+    headers: { 'content-type': 'text/html; charset=UTF-8', 'cf-mitigated': 'challenge', server: 'cloudflare' },
+  });
+}
+
+// Canvas's own answer to a dead token.
+function canvasInvalidToken(): Response {
+  return new Response(JSON.stringify({ errors: [{ message: 'Invalid access token.' }] }), {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: { 'content-type': 'application/json; charset=utf-8', 'www-authenticate': 'Bearer realm="canvas-lms"' },
+  });
+}
+
+const tokenAccount: Account = { mode: 'token', name: 'x', baseUrl: BASE, token: 'tok' };
+const oauthAccount = (): Account => ({
+  mode: 'oauth', name: 'x', baseUrl: BASE, clientId: 'cid', clientSecret: 'csec', refreshToken: 'rtok',
+});
+const tokenJson = (t: string) =>
+  new Response(JSON.stringify({ access_token: t, expires_in: 3600 }), {
+    status: 200, headers: { 'content-type': 'application/json' },
+  });
+
+describe('client: a 401 refusal page is EdgeBlockedError, not TokenExpiredError', () => {
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
+
+  it('request() in token mode — CloudFront 401', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(blocked401());
+    const err = await new CanvasClient(tokenAccount).request('/api/v1/users/self').catch((e) => e);
+    expect(err).toBeInstanceOf(EdgeBlockedError);
+    expect(err).not.toBeInstanceOf(TokenExpiredError);
+    expect((err as EdgeBlockedError).vendor).toBe('CloudFront');
+    expect((err as EdgeBlockedError).status).toBe(401);
+    expect((err as Error).message).not.toMatch(/CANVAS_TOKEN/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('requestPaginated() — Cloudflare challenge 403', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(challenge(403));
+    const err = await new CanvasClient(tokenAccount).requestPaginated('/api/v1/courses').catch((e) => e);
+    expect(err).toBeInstanceOf(EdgeBlockedError);
+    expect((err as EdgeBlockedError).vendor).toBe('Cloudflare');
+  });
+
+  it('a Cloudflare challenge served as 503 is a block, not "Canvas unreachable"', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(challenge(503));
+    const err = await new CanvasClient(tokenAccount).request('/api/v1/users/self').catch((e) => e);
+    expect(err).toBeInstanceOf(EdgeBlockedError);
+    expect(err).not.toBeInstanceOf(CanvasUnreachableError);
+  });
+
+  it('oauth mode: the block spends no second refresh and surfaces as EdgeBlockedError', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(tokenJson('at1'))
+      .mockResolvedValue(blocked401());
+    const err = await new CanvasClient(oauthAccount()).request('/x').catch((e) => e);
+    expect(err).toBeInstanceOf(EdgeBlockedError);
+    // one refresh (the lazy first mint) + the blocked call — no re-mint on the block
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('download() — CloudFront 401', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-edge-'));
+    vi.stubEnv('CANVAS_OUTPUT_DIR', dir);
+    try {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(blocked401());
+      const err = await new CanvasClient(tokenAccount)
+        .download(`${BASE}/files/1/download`, join(dir, 'r.pdf')).catch((e) => e);
+      expect(err).toBeInstanceOf(EdgeBlockedError);
+      expect(err).not.toBeInstanceOf(TokenExpiredError);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('control: Canvas\'s own 401 is still TokenExpiredError (request)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(canvasInvalidToken());
+    const err = await new CanvasClient(tokenAccount).request('/api/v1/users/self').catch((e) => e);
+    expect(err).toBeInstanceOf(TokenExpiredError);
+    expect(err).not.toBeInstanceOf(EdgeBlockedError);
+  });
+
+  it('a body-less 401 (no content-type) is still TokenExpiredError', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 401 }));
+    const err = await new CanvasClient(tokenAccount).request('/api/v1/users/self').catch((e) => e);
+    expect(err).toBeInstanceOf(TokenExpiredError);
+  });
+
+  it('an unreadable 401 body is judged on headers alone, not thrown as a stream error', async () => {
+    const broken = new ReadableStream({ start(c) { c.error(new Error('socket hang up')); } });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(broken, { status: 401, headers: { 'content-type': 'text/html' } }),
+    );
+    const err = await new CanvasClient(tokenAccount).request('/api/v1/users/self').catch((e) => e);
+    expect(err).toBeInstanceOf(TokenExpiredError);
+  });
+
+  it('control: Canvas\'s own 401 is still TokenExpiredError (download)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-edge-'));
+    vi.stubEnv('CANVAS_OUTPUT_DIR', dir);
+    try {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(canvasInvalidToken());
+      const err = await new CanvasClient(tokenAccount)
+        .download(`${BASE}/files/1/download`, join(dir, 'r.pdf')).catch((e) => e);
+      expect(err).toBeInstanceOf(TokenExpiredError);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('healthcheck: a 401 refusal page reads edge_blocked', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('token mode, CloudFront 401', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(blocked401());
+    const r = await healthcheck({ source: 'env', account: tokenAccount });
+    expect(r.ok).toBe(false);
+    expect(r.error?.kind).toBe('edge_blocked');
+  });
+
+  it('control: Canvas\'s own 401 is not edge_blocked', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(canvasInvalidToken());
+    const r = await healthcheck({ source: 'env', account: tokenAccount });
     expect(r.ok).toBe(false);
     expect(r.error?.kind).not.toBe('edge_blocked');
   });

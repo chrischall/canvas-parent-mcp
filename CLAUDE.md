@@ -150,8 +150,10 @@ the student's work.
 - **XSSI prefix:** some endpoints prepend `while(1);` to JSON — `parseJsonBody` strips it.
 - **Pagination:** RFC 5988 `Link: <...>; rel="next"`. `requestPaginated` follows `next` until exhausted or `maxPages` (default 50). `per_page` injected if absent (default 100).
 - **Downloads:** `download()` pins the URL to the `CANVAS_BASE_URL` origin (https, `/files/<id>` path, no userinfo) before any auth is attached, and confines `destinationPath` (symlink-resolved) to `CANVAS_OUTPUT_DIR` / `~/Downloads`; it requires the parent dir to exist and refuses to overwrite unless `overwrite: true`. The write itself goes through `writeConfined()` — `open(O_NOFOLLOW | (overwrite ? O_TRUNC : O_EXCL), 0o600)` — so a symlink planted at the destination during the fetch is refused (`InvalidPathError`) instead of followed. Custom errors: `DownloadUrlRejectedError`, `DownloadDestinationRejectedError`, `InvalidPathError`, `FileExistsError`, `ParentDirectoryMissingError`.
-- **5xx:** mapped to `CanvasUnreachableError`.
-- **Other 4xx (and a failed login-page GET):** the thrown error keeps its short message and carries a redacted, bounded `bodyPreview` (`withBodyPreview`), which mcp-utils' credential healthcheck reads — so a CDN/WAF refusal page reports `edge_blocked`, not a credential or network failure. Don't drop it.
+- **CDN/WAF blocks come first:** every non-OK API response and download goes through `throwIfEdgeBlocked` *before* the status mapping below. When mcp-utils' `detectEdgeBlock` recognises a refusal page (non-JSON body read from a clone, plus headers), it throws `EdgeBlockedError` (service `Canvas`, method, query-stripped path) — so a WAF 401 is never reported as an expired token and a 503 challenge is never "unreachable". Keep that call ahead of the 401/5xx checks (chrischall/mcp-host#1015).
+- **401:** `TokenExpiredError(mode)` — only reached once the edge-block check has ruled out a refusal page.
+- **5xx:** mapped to `CanvasUnreachableError` (again, only after the edge-block check).
+- **Other 4xx (and a failed login-page GET):** the thrown error keeps its short message and carries a redacted, bounded `bodyPreview` (`withBodyPreview`). For API requests this is now a fallback — a recognised refusal page has already thrown `EdgeBlockedError` — but the session-mode login-page GET in `session-login.ts` doesn't go through `throwIfEdgeBlocked`, so there mcp-utils' credential healthcheck still reads `bodyPreview` to report `edge_blocked` instead of a credential or network failure. Don't drop it.
 
 ## Testing
 

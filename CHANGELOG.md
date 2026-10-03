@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.7](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.6...v2.1.7) (2026-10-03)
+
+
+### Documentation
+
+* describe edge-block interception ahead of the Canvas status mapping ([#234](https://github.com/chrischall/canvas-parent-mcp/issues/234)) ([0070e70](https://github.com/chrischall/canvas-parent-mcp/commit/0070e70ad9bfa9fe50ad19abdc40a1296ab5b735))
+
 ## [2.1.6](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.5...v2.1.6) (2026-10-03)
 
 

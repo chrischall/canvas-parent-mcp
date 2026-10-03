@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.1.6](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.5...v2.1.6) (2026-10-03)
+
+
+### Bug Fixes
+
+* **client:** report a CDN/WAF block as edge-blocked, not an expired Canvas token ([#230](https://github.com/chrischall/canvas-parent-mcp/issues/230)) ([2989a75](https://github.com/chrischall/canvas-parent-mcp/commit/2989a75a8d462c5e457819a26a2469ebea4d7103))
+* **deps:** bump @chrischall/mcp-utils to 2.12.0 ([#229](https://github.com/chrischall/canvas-parent-mcp/issues/229)) ([3051809](https://github.com/chrischall/canvas-parent-mcp/commit/3051809fc4fb8e73a74cad548debfecfafc88cd3))
+* **deps:** bump @chrischall/mcp-utils to 2.13.0 ([#233](https://github.com/chrischall/canvas-parent-mcp/issues/233)) ([ee2ed35](https://github.com/chrischall/canvas-parent-mcp/commit/ee2ed3525c06df2c027f0407c5213acfa9c50507))
+* keep credentials and report edge_blocked on CDN/WAF blocks (mcp-utils 2.10.0) ([#226](https://github.com/chrischall/canvas-parent-mcp/issues/226)) ([96beb65](https://github.com/chrischall/canvas-parent-mcp/commit/96beb650063e4c58a462fc5ae29c0964fb2b1248))
+* report CDN/WAF blocks as edge_blocked, not a rejected credential (mcp-utils 2.9.0) ([#224](https://github.com/chrischall/canvas-parent-mcp/issues/224)) ([f5e3157](https://github.com/chrischall/canvas-parent-mcp/commit/f5e315756243b56b91c394bae84cabc895e8dab8))
+
+
+### Documentation
+
+* note that a CDN/WAF-blocked oauth refresh passes through as EdgeBlockedError ([#228](https://github.com/chrischall/canvas-parent-mcp/issues/228)) ([2ad2ab8](https://github.com/chrischall/canvas-parent-mcp/commit/2ad2ab80c467683919757f99efd0c506049e5a22))
+* stop telling agents to arm the release PR ([#231](https://github.com/chrischall/canvas-parent-mcp/issues/231)) ([f4780ee](https://github.com/chrischall/canvas-parent-mcp/commit/f4780ee697ade11723d620526c0132ca8421f7dd))
+
 ## [2.1.5](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.4...v2.1.5) (2026-09-27)
 
 

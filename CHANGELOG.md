@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.7](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.6...v2.1.7) (2026-10-05)
+
+
+### Bug Fixes
+
+* **deps:** bump the production-dependencies group with 3 updates ([#238](https://github.com/chrischall/canvas-parent-mcp/issues/238)) ([e13d02d](https://github.com/chrischall/canvas-parent-mcp/commit/e13d02d459c1e7d67c6e426bd74d0c67a43d4db2))
+* **deps:** require @chrischall/mcp-utils 2.14.0 and MCP SDK 2.3.0 ([#239](https://github.com/chrischall/canvas-parent-mcp/issues/239)) ([02e50fb](https://github.com/chrischall/canvas-parent-mcp/commit/02e50fb5f8e39bec5e90be3045c409cec88a03fc))
+
+
+### Documentation
+
+* describe edge-block interception ahead of the Canvas status mapping ([#234](https://github.com/chrischall/canvas-parent-mcp/issues/234)) ([0070e70](https://github.com/chrischall/canvas-parent-mcp/commit/0070e70ad9bfa9fe50ad19abdc40a1296ab5b735))
+
 ## [2.1.6](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.5...v2.1.6) (2026-10-03)
 
 

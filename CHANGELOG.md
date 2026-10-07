@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.8](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.7...v2.1.8) (2026-10-07)
+
+
+### Bug Fixes
+
+* **deps:** bump source-map-js from 1.2.1 to 1.2.2 in the security group across 1 directory ([#242](https://github.com/chrischall/canvas-parent-mcp/issues/242)) ([5e3ffe0](https://github.com/chrischall/canvas-parent-mcp/commit/5e3ffe03e0e33619b907b3043bc5354432324bee))
+* **deps:** pick up fetchproxy approval-retry and frame-validation fixes and mcp-utils 2.15 ([#240](https://github.com/chrischall/canvas-parent-mcp/issues/240)) ([6504ab5](https://github.com/chrischall/canvas-parent-mcp/commit/6504ab58a7b28ec7895fb51112ad2bf8dcdfc4d7))
+
 ## [2.1.7](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.6...v2.1.7) (2026-10-05)
 
 

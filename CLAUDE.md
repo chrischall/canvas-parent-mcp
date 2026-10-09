@@ -55,7 +55,8 @@ CANVAS_NAME=cms                                # optional, defaults to host
 # Mode A — fetchproxy fallback (recommended, zero-config).
 # Leave all CANVAS_* auth vars unset. Install the ContextMint Bridge browser
 # extension, sign into your Canvas instance once. The MCP reads
-# `canvas_session` + `pseudonym_credentials` from your tab at startup.
+# `canvas_session` + `pseudonym_credentials` from your tab lazily on the
+# first request and again on every 401 — the extension must stay reachable.
 # (ContextMint Bridge = the fetchproxy extension renamed, same maintainer;
 # source: github.com/nullnet-app/contextmint-bridge, each release zip has a .sha256.)
 CANVAS_DISABLE_FETCHPROXY=  # set to "1" to opt out
@@ -87,7 +88,7 @@ CANVAS_SESSION_FILE=         # optional; 0600 file, default $MCP_DATA_DIR/.canva
 `src/auth.ts` is the canonical "browser-bootstrap + Node-direct" auth shape used across our MCP servers. Sibling MCPs (ofw-mcp, signupgenius-mcp, …) model their auth on the same shape — keep the structure flat, the path-selection explicit, the error messages actionable. Four paths in priority order:
 
 1. **Token / OAuth / session-scrape (env-var paths)** → delegated to `loadAccount()` in `config.ts`. Existing behavior unchanged.
-2. **fetchproxy fallback (new)** → `@fetchproxy/bootstrap` snapshots `canvas_session` + `pseudonym_credentials` cookies from a signed-in Canvas tab in one round-trip, then closes the bridge. Subsequent Canvas API calls go out via direct Node fetch with `Cookie: canvas_session=…; pseudonym_credentials=…` — fetchproxy is NOT in the hot path.
+2. **fetchproxy fallback (new)** → `@fetchproxy/bootstrap` lifts `canvas_session` + `pseudonym_credentials` cookies from a signed-in Canvas tab lazily on the first request and again on every 401 (via the `refresh` function `resolveAuth()` hands the client), so the extension must stay reachable for the life of the server. Between lifts, Canvas API calls go out via direct Node fetch with `Cookie: canvas_session=…; pseudonym_credentials=…` — fetchproxy is NOT in the hot path.
 3. **Error** → tells the user how to fix it (set creds, OR install the extension and sign in).
 
 Declared domain is `instructure.com` for any `*.instructure.com` Canvas tenant (the matcher does `*.${domain}` matching), so the user pairs the extension once and any district they switch to via `CANVAS_BASE_URL` works. Non-`.instructure.com` self-hosted Canvas installations declare the literal hostname.

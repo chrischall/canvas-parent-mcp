@@ -31,12 +31,15 @@
 //
 //   4. fetchproxy fallback (new)
 //      When no env vars are set, lift the user's session out of their
-//      already-signed-in canvas tab. `@fetchproxy/bootstrap` opens a
-//      one-shot WebSocket bridge, asks the extension for the
+//      already-signed-in canvas tab. resolveAuth() does not read the
+//      browser itself: it hands the client a `refresh` function, and the
+//      client calls it lazily on the first request and again on every 401.
+//      Each lift asks the extension (via `@fetchproxy/bootstrap`) for the
 //      `canvas_session` + `pseudonym_credentials` cookies (declared
-//      upfront — that's the security boundary), and closes the bridge.
-//      Subsequent Canvas API calls go out via plain Node `fetch()` with
-//      those cookies attached — fetchproxy is NOT in the request hot path.
+//      upfront — that's the security boundary). Between lifts, Canvas API
+//      calls go out via plain Node `fetch()` with those cookies attached —
+//      fetchproxy is NOT in the request hot path, but the extension must
+//      stay reachable for the life of the server so a 401 can re-lift.
 //
 //      Note: `pseudonym_credentials` is HttpOnly, which is fine —
 //      @fetchproxy/bootstrap@^0.3.0 uses `chrome.cookies.get` to read

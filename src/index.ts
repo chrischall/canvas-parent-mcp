@@ -32,8 +32,10 @@ import { registerFileTools } from './tools/files.js';
 //
 // Auth resolution (see src/auth.ts): try env vars first (token > OAuth >
 // username/password), then fall back to reading session cookies from the
-// signed-in browser tab via @fetchproxy/bootstrap. Bootstrap runs at
-// startup only — the bridge closes before any tool call.
+// signed-in browser tab via @fetchproxy/bootstrap. resolveAuth() does NOT
+// touch the browser: the cookie is lifted lazily on the first Canvas request
+// and re-lifted on every 401, so the browser extension must stay reachable
+// for as long as the server runs, not just at startup.
 let resolved: ResolvedAuth | null = null;
 let configError: Error | null = null;
 try {

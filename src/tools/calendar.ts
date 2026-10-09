@@ -14,7 +14,7 @@ const eventsArgs = z.object({
 export function registerCalendarTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_calendar_events', {
     description: 'List Canvas calendar events or assignments across selected contexts (courses/users).',
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: eventsArgs,
   }, async (rawArgs) => {
     const args = eventsArgs.parse(rawArgs);
@@ -31,7 +31,7 @@ export function registerCalendarTools(server: McpServer, client: CanvasClient): 
 
   server.registerTool('canvas_list_upcoming_events', {
     description: "List the calling user's upcoming events (Canvas's curated next-7-days view).",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
   }, async () => {
     const data = await client.request('/api/v1/users/self/upcoming_events');
     return textContent(data);

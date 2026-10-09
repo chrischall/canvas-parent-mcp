@@ -22,7 +22,12 @@
         "CANVAS_CLIENT_ID": "${user_config.canvas_client_id}",
         "CANVAS_CLIENT_SECRET": "${user_config.canvas_client_secret}",
         "CANVAS_REFRESH_TOKEN": "${user_config.canvas_refresh_token}",
-        "CANVAS_NAME": "${user_config.canvas_name}"
+        "CANVAS_NAME": "${user_config.canvas_name}",
+        "CANVAS_OUTPUT_DIR": "${user_config.canvas_output_dir}",
+        "CANVAS_SESSION_CACHE": "${user_config.canvas_session_cache}",
+        "FETCHPROXY_WS_PORT": "${user_config.fetchproxy_ws_port}",
+        "FETCHPROXY_WS_HOST": "${user_config.fetchproxy_ws_host}",
+        "FETCHPROXY_IDENTITY_DIR": "${user_config.fetchproxy_identity_dir}"
       }
     }
   },
@@ -77,6 +82,36 @@
       "type": "string",
       "title": "Display name (optional)",
       "description": "Friendly name for the Canvas instance (e.g. \"CMS\"). Defaults to the host portion of the base URL.",
+      "required": false
+    },
+    "canvas_output_dir": {
+      "type": "directory",
+      "title": "Download directory (optional)",
+      "description": "Directory canvas_download_file may write into (default ~/Downloads). A relative destinationPath is resolved against it.",
+      "required": false
+    },
+    "canvas_session_cache": {
+      "type": "string",
+      "title": "Session cache (optional)",
+      "description": "Set to false to disable the on-disk session cache and re-authenticate on every process start. Defaults to enabled.",
+      "required": false
+    },
+    "fetchproxy_ws_port": {
+      "type": "string",
+      "title": "fetchproxy port (advanced)",
+      "description": "Localhost port of the fetchproxy concentrator the ContextMint Bridge extension connects to (default 37149). Every MCP on one machine shares it, so move it for all of them or not at all.",
+      "required": false
+    },
+    "fetchproxy_ws_host": {
+      "type": "string",
+      "title": "fetchproxy bind address (advanced)",
+      "description": "Bind interface for the fetchproxy concentrator, a literal IP only (default 127.0.0.1). Keep on loopback; it exists for hosted deployments that run each MCP in its own network namespace.",
+      "required": false
+    },
+    "fetchproxy_identity_dir": {
+      "type": "string",
+      "title": "fetchproxy identity directory (advanced)",
+      "description": "Absolute path where the fetchproxy long-term identity keypair is stored (default ~/.fetchproxy/identity/).",
       "required": false
     }
   },

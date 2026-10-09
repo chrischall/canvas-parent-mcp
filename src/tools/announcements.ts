@@ -15,7 +15,7 @@ const argsSchema = z.object({
 export function registerAnnouncementTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_announcements', {
     description: "List announcements across one or more courses. `contextCodes` is required (e.g. [\"course_123\"]). Defaults to active-only.",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

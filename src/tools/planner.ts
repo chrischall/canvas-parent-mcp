@@ -14,7 +14,7 @@ const argsSchema = z.object({
 export function registerPlannerTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_planner_items', {
     description: "List planner items (assignments + announcements + planner notes + calendar events) for the user or a linked observee.",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

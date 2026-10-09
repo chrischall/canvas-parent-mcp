@@ -10,7 +10,7 @@ const argsSchema = z.object({
 export function registerProfileTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_get_profile', {
     description: "Get the logged-in user's Canvas profile (id, name, primary_email, login_id, locale, time_zone). Useful first call to confirm credentials.",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

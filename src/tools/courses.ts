@@ -16,7 +16,7 @@ const getArgs = z.object({
 export function registerCourseTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_courses', {
     description: 'List active Canvas courses (with course-level grades, total scores, current grading period scores, and term).',
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
@@ -31,7 +31,7 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
 
   server.registerTool('canvas_get_course', {
     description: 'Get a single Canvas course with its syllabus, teachers, and term.',
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);

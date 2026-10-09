@@ -18,7 +18,7 @@ const getArgs = z.object({
 export function registerConversationTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_conversations', {
     description: "List Canvas inbox conversations. Optional `scope` (unread/starred/archived/sent) and `filter` (array of context codes).",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
@@ -33,7 +33,7 @@ export function registerConversationTools(server: McpServer, client: CanvasClien
 
   server.registerTool('canvas_get_conversation', {
     description: 'Get a full Canvas conversation thread with all messages. Read-only: does not mark the conversation as read.',
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);

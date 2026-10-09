@@ -18,7 +18,7 @@ const downloadArgs = z.object({
 export function registerFileTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_course_files', {
     description: "List a course's files (metadata only — use canvas_download_file with the `url` field).",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
@@ -32,7 +32,7 @@ export function registerFileTools(server: McpServer, client: CanvasClient): void
 
   server.registerTool('canvas_download_file', {
     description: "Download a Canvas file to disk. `url` is the absolute URL from canvas_list_course_files (only file URLs on the configured Canvas host are accepted); `destinationPath` is required and must be inside the download directory (CANVAS_OUTPUT_DIR, default ~/Downloads).",
-    annotations: { destructiveHint: true, openWorldHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: downloadArgs,
   }, async (rawArgs) => {
     const args = downloadArgs.parse(rawArgs);

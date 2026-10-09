@@ -14,7 +14,7 @@ const argsSchema = z.object({
 export function registerDiscussionTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_discussion_topics', {
     description: 'List discussion topics for a course (read-only).',
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

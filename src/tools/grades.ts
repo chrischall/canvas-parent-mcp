@@ -10,7 +10,7 @@ const argsSchema = z.object({
 export function registerGradeTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_enrollments', {
     description: 'List active student enrollments with per-course grades (current_score, final_score, current_grade, final_grade, current grading period info).',
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

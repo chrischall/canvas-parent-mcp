@@ -10,7 +10,7 @@ const argsSchema = z.object({
 export function registerObserveeTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_observees', {
     description: "List students linked to your Canvas observer account. Returns an empty array for plain student tokens.",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

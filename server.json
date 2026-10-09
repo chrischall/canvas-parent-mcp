@@ -79,6 +79,18 @@
           "description": "Absolute path for the session cache file. Defaults to $MCP_DATA_DIR/.canvas-parent-mcp/session.json.",
           "isRequired": false,
           "format": "string"
+        },
+        {
+          "name": "CANVAS_OUTPUT_DIR",
+          "description": "Directory canvas_download_file may write into (default ~/Downloads). A relative destinationPath is resolved against it.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "CANVAS_DISABLE_FETCHPROXY",
+          "description": "Set to 1 to turn off the browser (fetchproxy) fallback, so missing credentials are a hard error instead.",
+          "isRequired": false,
+          "format": "string"
         }
       ]
     }

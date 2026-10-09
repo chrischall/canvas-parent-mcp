@@ -1,5 +1,5 @@
 import { constants as fsConstants } from 'fs';
-import { lstat, open, stat } from 'fs/promises';
+import { lstat, open, rm, stat } from 'fs/promises';
 import { createSessionCache, reportCacheWriteFailure } from './session-cache.js';
 import { dirname, isAbsolute, join, resolve } from 'path';
 import { homedir } from 'os';
@@ -9,6 +9,7 @@ import {
 import { CookieSessionManager } from '@chrischall/mcp-utils/session';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
 import { sessionLogin as defaultSessionLogin, withBodyPreview } from './session-login.js';
+import { requestSignal } from './signal.js';
 
 // Re-export the fleet-shared RFC 5988 Link parser so existing importers
 // (`tests/client.test.ts`, and any sibling that pulled it from here) keep
@@ -32,6 +33,15 @@ export interface PaginatedOpts extends RequestOpts {
 
 const DEFAULT_PER_PAGE = 100;
 const DEFAULT_MAX_PAGES = 50;
+
+/**
+ * A download's whole-transfer ceiling. Longer than the 30s API timeout because
+ * course files include lecture videos; the tool call's own cancellation still
+ * stops it sooner when the client gives up.
+ */
+export const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
+/** Largest file canvas_download_file writes. The body is streamed, so this bounds disk, not memory. */
+export const MAX_DOWNLOAD_BYTES = 1024 ** 3;
 
 /**
  * The session shape the {@link CookieSessionManager} mints and replays for us.
@@ -59,6 +69,7 @@ export class CanvasClient {
   private refreshSession: (() => Promise<string>) | null;
   /** Explicit download root; when unset, resolved per call (see {@link downloadRoot}). */
   private outputDir: string | undefined;
+  private maxDownloadBytes: number;
   private auth: CookieSessionManager<CanvasAuth>;
   /** Lazily-built shared refresh_token exchanger (oauth mode only). */
   private oauthRefresh: ReturnType<typeof createOAuth2Refresher> | null = null;
@@ -80,10 +91,13 @@ export class CanvasClient {
       refreshSession?: () => Promise<string>;
       /** Directory downloads are confined to (default: CANVAS_OUTPUT_DIR, else ~/Downloads). */
       outputDir?: string;
+      /** Largest download accepted (default {@link MAX_DOWNLOAD_BYTES}). */
+      maxDownloadBytes?: number;
     } = {},
   ) {
     this.account = account;
     this.outputDir = opts.outputDir;
+    this.maxDownloadBytes = opts.maxDownloadBytes ?? MAX_DOWNLOAD_BYTES;
     this.sessionLoginFn = opts.sessionLogin ?? defaultSessionLogin;
     this.refreshSession = opts.refreshSession ?? null;
     this.auth = new CookieSessionManager<CanvasAuth>({
@@ -144,6 +158,10 @@ export class CanvasClient {
    *  - `destinationPath` must lie inside the download root (see
    *    {@link downloadRoot}), checked through symlinks; a relative path is
    *    resolved against that root.
+   *
+   * The body is streamed to disk (never buffered whole) and capped at
+   * `maxDownloadBytes`; a transfer that fails or overruns part-way leaves no
+   * partial file behind.
    */
   async download(
     path: string, destinationPath: string,
@@ -163,17 +181,25 @@ export class CanvasClient {
     const parent = dirname(dest);
     try { await stat(parent); } catch { throw new ParentDirectoryMissingError(parent); }
 
-    const res = await this.authedFetch(url, {});
+    const res = await this.authedFetch(url, {}, DOWNLOAD_TIMEOUT_MS);
     await throwIfEdgeBlocked(res, 'GET', path);
-    if (res.status === 401) throw new TokenExpiredError(this.account.mode);
-    if (res.status === 404) throw new Error(`Canvas download 404 for ${path}`);
-    if (!res.ok) throw new Error(`Canvas download ${res.status} for ${path}`);
+    if (res.status === 401) throw this.expiredError();
+    // A file URL's `verifier` query param is a bearer-like capability for that
+    // file; keep it out of an error the model and transcript will see.
+    if (res.status === 404) throw new Error(`Canvas download 404 for ${redactPath(path)}`);
+    if (!res.ok) throw new Error(`Canvas download ${res.status} for ${redactPath(path)}`);
 
-    const buf = new Uint8Array(await res.arrayBuffer());
-    await writeConfined(dest, destinationPath, buf, opts.overwrite === true);
+    // Refuse a declared oversize body before creating the file at all.
+    if (Number(res.headers.get('content-length')) > this.maxDownloadBytes) {
+      await res.body?.cancel();
+      throw new DownloadTooLargeError(this.maxDownloadBytes);
+    }
+    const bytes = await writeConfined(
+      dest, destinationPath, res.body, opts.overwrite === true, this.maxDownloadBytes,
+    );
     return {
       path: dest,
-      bytes: buf.byteLength,
+      bytes,
       contentType: res.headers.get('content-type') ?? 'application/octet-stream',
     };
   }
@@ -231,10 +257,12 @@ export class CanvasClient {
     // before the status mapping below calls a 401 an expired token (or a 503
     // challenge "unreachable") — chrischall/mcp-host#1015.
     await throwIfEdgeBlocked(res, opts.method ?? 'GET', path);
-    if (res.status === 401) throw new TokenExpiredError(this.account.mode);
-    if (res.status === 404) throw new Error(`Canvas 404 ${path}`);
+    if (res.status === 401) throw this.expiredError();
+    // Query strings stay out of the message: a pagination `next` URL can carry
+    // cursors and, on file URLs, a `verifier` capability.
+    if (res.status === 404) throw new Error(`Canvas 404 ${redactPath(path)}`);
     if (res.status >= 500) throw new CanvasUnreachableError(res.status);
-    if (!res.ok) throw withBodyPreview(new Error(`Canvas ${res.status} ${res.statusText} for ${path}`), await res.text());
+    if (!res.ok) throw withBodyPreview(new Error(`Canvas ${res.status} ${res.statusText} for ${redactPath(path)}`), await res.text());
     return res;
   }
 
@@ -247,12 +275,14 @@ export class CanvasClient {
    * download callers map that to a {@link TokenExpiredError}. Used by both API
    * requests and file downloads.
    */
-  private async authedFetch(url: string, init: RequestInit): Promise<Response> {
+  private async authedFetch(url: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
     this.proactivelyExpire();
     return this.auth.withSession(async (state) =>
       fetch(url, {
         ...init,
         headers: { ...state.headers, ...(init.headers as Record<string, string> | undefined) },
+        // Fresh per attempt, so a 401 replay gets its own full timeout.
+        signal: requestSignal(timeoutMs),
       }),
     );
   }
@@ -273,6 +303,15 @@ export class CanvasClient {
     ) {
       this.auth.invalidate();
     }
+  }
+
+  /**
+   * The error for a 401 that survived any re-auth. On the fetchproxy path the
+   * session came from the browser and the user never set CANVAS_USERNAME /
+   * CANVAS_PASSWORD, so the message must point at the browser instead.
+   */
+  private expiredError(): TokenExpiredError {
+    return new TokenExpiredError(this.account.mode, undefined, { browser: this.refreshSession !== null });
   }
 
   /** Whether a 401 in the current mode can be recovered by re-running login(). */
@@ -327,6 +366,7 @@ export class CanvasClient {
       endpoint: `${acct.baseUrl}/login/oauth2/token`,
       refreshToken: acct.refreshToken,
       params: { client_id: acct.clientId, client_secret: acct.clientSecret },
+      fetchImpl: (input, init) => fetch(input, { ...init, signal: requestSignal() }),
     });
     let accessToken: string;
     let expiresIn: number;
@@ -373,7 +413,7 @@ async function throwIfEdgeBlocked(res: Response, method: string, path: string): 
   if (hit) throw new EdgeBlockedError(res.status, hit.vendor, { service: 'Canvas', method, path: redactPath(path) });
 }
 
-/** A request target without its query string (a pagination URL can carry ids/cursors). */
+/** A request target without its query string (a pagination URL can carry ids/cursors, a file URL its verifier). */
 function redactPath(pathOrUrl: string): string {
   return pathOrUrl.split('?')[0];
 }
@@ -386,12 +426,22 @@ function injectPerPage(pathOrUrl: string, perPage: number): string {
 }
 
 export class TokenExpiredError extends Error {
-  constructor(public mode: 'token' | 'oauth' | 'session', public detail?: string) {
+  /**
+   * `opts.browser`: the session was lifted from the user's signed-in browser
+   * tab (the fetchproxy path), not minted from CANVAS_USERNAME/PASSWORD.
+   */
+  constructor(
+    public mode: 'token' | 'oauth' | 'session',
+    public detail?: string,
+    opts: { browser?: boolean } = {},
+  ) {
     const base =
       mode === 'token'
         ? 'Canvas access token rejected (401). Check CANVAS_TOKEN — it may be expired or revoked.'
         : mode === 'session'
-          ? 'Canvas session login failed (401). Check CANVAS_USERNAME / CANVAS_PASSWORD — they may have changed, or the account may be locked or behind SSO.'
+          ? opts.browser
+            ? 'Canvas rejected the session read from your browser (401). Sign back into Canvas in your browser (the tab the ContextMint Bridge extension reads), then retry.'
+            : 'Canvas session login failed (401). Check CANVAS_USERNAME / CANVAS_PASSWORD — they may have changed, or the account may be locked or behind SSO.'
           : 'Canvas OAuth refresh failed. Check CANVAS_CLIENT_ID, CANVAS_CLIENT_SECRET, CANVAS_REFRESH_TOKEN.';
     super(detail ? `${base} (${detail})` : base);
     this.name = 'TokenExpiredError';
@@ -411,6 +461,12 @@ export class DownloadUrlRejectedError extends Error {
     this.name = 'DownloadUrlRejectedError';
   }
 }
+export class DownloadTooLargeError extends Error {
+  constructor(public maxBytes: number) {
+    super(`DownloadTooLarge: the file is larger than the ${maxBytes} bytes canvas_download_file accepts.`);
+    this.name = 'DownloadTooLargeError';
+  }
+}
 export class DownloadDestinationRejectedError extends Error {
   constructor(public path: string, public root: string) {
     super(
@@ -428,10 +484,17 @@ export class DownloadDestinationRejectedError extends Error {
  * refuse it (ELOOP), and O_EXCL (without overwrite) refuses anything that
  * appeared at all. New files are created owner-only (0600): they are a
  * student's school records.
+ *
+ * The body is streamed chunk by chunk (fleet-audit#989: a lecture video
+ * buffered whole could run to hundreds of MB) and stops at `maxBytes`. On any
+ * failure mid-stream — the cap, a timeout, the caller cancelling — the
+ * partial file is removed rather than left looking like a finished download.
+ * Returns the number of bytes written.
  */
 async function writeConfined(
-  dest: string, requested: string, buf: Uint8Array, overwrite: boolean,
-): Promise<void> {
+  dest: string, requested: string, body: ReadableStream<Uint8Array> | null,
+  overwrite: boolean, maxBytes: number,
+): Promise<number> {
   // O_NOFOLLOW is POSIX-only: on Windows it is undefined, which `|` coerces to 0.
   const { O_WRONLY, O_CREAT, O_TRUNC, O_EXCL, O_NOFOLLOW } = fsConstants;
   const flags = O_WRONLY | O_CREAT | O_NOFOLLOW | (overwrite ? O_TRUNC : O_EXCL);
@@ -445,11 +508,22 @@ async function writeConfined(
     if (code === 'EISDIR') throw new InvalidPathError(requested);
     throw e;
   }
+  let bytes = 0;
   try {
-    await handle.writeFile(buf);
-  } finally {
+    if (body) {
+      for await (const chunk of body) {
+        bytes += chunk.byteLength;
+        if (bytes > maxBytes) throw new DownloadTooLargeError(maxBytes);
+        await handle.write(chunk);
+      }
+    }
+  } catch (e) {
     await handle.close();
+    await rm(dest, { force: true });
+    throw e;
   }
+  await handle.close();
+  return bytes;
 }
 
 export class InvalidPathError extends Error {

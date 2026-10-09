@@ -42,6 +42,12 @@ try {
   configError = e as Error;
 }
 
+// One client for every tool, healthcheck included: each CanvasClient owns a
+// session manager, so a second one would log in (or lift the browser) again.
+const client = resolved
+  ? new CanvasClient(resolved.account, { refreshSession: resolved.refresh })
+  : null;
+
 // `runMcp` (from @chrischall/mcp-utils) builds the McpServer, runs the
 // registrar, then connects the stdio transport and installs SIGINT/SIGTERM
 // shutdown handlers. The deferred-config-error pattern is preserved by
@@ -54,12 +60,9 @@ await runMcp({
   tools: [
     // Outside the `if (resolved)` on purpose: an unconfigured server must
     // still expose something that can say WHY (see the tool's docblock).
-    (server) => registerHealthcheckTools(server, { resolved, configError }),
+    (server) => registerHealthcheckTools(server, { resolved, configError, client }),
     (server) => {
-      if (resolved) {
-        const client = new CanvasClient(resolved.account, {
-          refreshSession: resolved.refresh,
-        });
+      if (resolved && client) {
         registerProfileTools(server, client);
         registerObserveeTools(server, client);
         registerCourseTools(server, client);

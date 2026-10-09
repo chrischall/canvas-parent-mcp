@@ -102,10 +102,11 @@ describe('fetchMobileClient', () => {
       clientId: 'mobile-cid',
       clientSecret: 'mobile-csec',
     });
-    const [url] = fetchMock.mock.calls[0];
+    const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(
       'https://sso.canvaslms.com/api/v1/mobile_verify.json?domain=cms.instructure.com',
     );
+    expect((init as RequestInit).signal).toBeInstanceOf(AbortSignal);
   });
 
   it('throws when authorized is false', async () => {
@@ -204,6 +205,7 @@ describe('exchangeAuthCode', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('https://cms.instructure.com/login/oauth2/token');
     expect((init as RequestInit).method).toBe('POST');
+    expect((init as RequestInit).signal).toBeInstanceOf(AbortSignal);
     const headers = (init as RequestInit).headers as Record<string, string>;
     expect(headers['Content-Type']).toBe('application/json');
     expect(JSON.parse((init as RequestInit).body as string)).toEqual({

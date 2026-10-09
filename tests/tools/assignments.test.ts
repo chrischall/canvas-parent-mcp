@@ -57,4 +57,15 @@ describe('canvas_list_missing_submissions', () => {
     expect(url).toContain('course_ids%5B%5D=1');
     expect(url).toContain('course_ids%5B%5D=2');
   });
+
+  it.each([
+    ['omitted', {}],
+    ['empty', { courseIds: [] }],
+  ])('rejects observeeId with courseIds %s, naming the missing argument, without calling Canvas', async (_label, extra) => {
+    const { handlers, pagSpy } = setup();
+    await expect(
+      handlers.get('canvas_list_missing_submissions')!({ observeeId: '99', ...extra }),
+    ).rejects.toThrow(/courseIds is required when observeeId is set/);
+    expect(pagSpy).not.toHaveBeenCalled();
+  });
 });

@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createTestHarness, parseToolResult } from '@chrischall/mcp-utils/test';
 import { registerHealthcheckTools } from '../src/tools/healthcheck.js';
 import type { ResolvedAuth } from '../src/auth.js';
+import { CanvasClient } from '../src/client.js';
 
 interface Result {
   ok: boolean;
@@ -9,8 +10,11 @@ interface Result {
   error?: { kind: string; message: string };
 }
 
-async function call(state: { resolved: ResolvedAuth | null; configError: Error | null }) {
-  const h = await createTestHarness((server) => registerHealthcheckTools(server, state));
+type State = { resolved: ResolvedAuth | null; configError: Error | null; client?: CanvasClient | null };
+
+async function call(state: State) {
+  const h = await createTestHarness((server) =>
+    registerHealthcheckTools(server, { client: null, ...state }));
   const names = (await h.listTools()).map((t) => t.name);
   const res = await h.client.callTool({ name: 'canvas_healthcheck', arguments: {} });
   await h.close?.();
@@ -67,5 +71,25 @@ describe('canvas_healthcheck', () => {
       configError: null,
     });
     expect(JSON.stringify(result)).not.toContain('SECRET_TOKEN_VALUE_1234567890');
+  });
+
+  // fleet-audit#377: the probe used to build a fresh CanvasClient (and session
+  // manager) per call, so with the session cache off every healthcheck did a
+  // full form login or browser lift. It must probe through the shared client.
+  it('probes through the shared client instead of building a new one per call', async () => {
+    const account = { baseUrl: 'https://school.instructure.com', mode: 'token', name: 'x', token: 't' } as const;
+    const client = new CanvasClient(account);
+    const request = vi.spyOn(client, 'request').mockResolvedValue({ id: 1 } as never);
+    const state = {
+      resolved: { source: 'env', account, refresh: undefined } as unknown as ResolvedAuth,
+      configError: null,
+      client,
+    };
+    const first = await call(state);
+    const second = await call(state);
+    expect(first.result.ok).toBe(true);
+    expect(second.result.ok).toBe(true);
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledWith('/api/v1/users/self/profile');
   });
 });

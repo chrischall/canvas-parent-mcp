@@ -112,6 +112,8 @@ describe('sessionLogin', () => {
     const [getUrl, getInit] = fetchMock.mock.calls[0];
     expect(getUrl).toBe('https://cms.instructure.com/login/canvas');
     expect((getInit as RequestInit).method ?? 'GET').toBe('GET');
+    // Both legs carry a timeout/cancel signal (fleet-audit#989).
+    expect((getInit as RequestInit).signal).toBeInstanceOf(AbortSignal);
 
     // POST call: sent form body with authenticity_token from the page
     const [postUrl, postInit] = fetchMock.mock.calls[1];
@@ -121,6 +123,7 @@ describe('sessionLogin', () => {
     expect(headers['Content-Type']).toBe('application/x-www-form-urlencoded');
     expect(headers.Cookie).toContain('_csrf_token=csrf-raw-value%3D%3D');
     expect((postInit as RequestInit).redirect).toBe('manual');
+    expect((postInit as RequestInit).signal).toBeInstanceOf(AbortSignal);
     const bodyParams = new URLSearchParams((postInit as RequestInit).body as string);
     expect(bodyParams.get('authenticity_token')).toBe('csrf-raw-value==');
     expect(bodyParams.get('pseudonym_session[unique_id]')).toBe('chris@example.com');

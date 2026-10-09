@@ -9,6 +9,7 @@
 // OAuth refresh path takes over for ongoing use.
 
 import { truncateErrorMessage } from '@chrischall/mcp-utils';
+import { requestSignal } from './signal.js';
 
 const SSO_HOSTS = ['sso.canvaslms.com', 'sso.beta.canvaslms.com', 'sso.test.canvaslms.com'] as const;
 
@@ -63,7 +64,7 @@ export interface MobileClient {
 
 export async function fetchMobileClient(domain: string, ssoHost: string): Promise<MobileClient> {
   const url = `https://${ssoHost}/api/v1/mobile_verify.json?domain=${encodeURIComponent(domain)}`;
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: requestSignal() });
   if (!res.ok) {
     // Fleet-shared sanitizer: redacts Bearer tokens/JWTs FIRST, then truncates,
     // so upstream error bodies can't leak secrets into the thrown message.
@@ -110,6 +111,7 @@ export async function exchangeAuthCode(
 ): Promise<ExchangeResult> {
   const res = await fetch(`${client.baseUrl}/login/oauth2/token`, {
     method: 'POST',
+    signal: requestSignal(),
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
       client_id: client.clientId,

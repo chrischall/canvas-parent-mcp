@@ -5,9 +5,10 @@ import { join } from 'path';
 import {
   CanvasClient, TokenExpiredError, CanvasUnreachableError,
   InvalidPathError, ParentDirectoryMissingError, FileExistsError,
-  DownloadUrlRejectedError, DownloadDestinationRejectedError,
-  parseLinkHeader,
+  DownloadUrlRejectedError, DownloadDestinationRejectedError, DownloadTooLargeError,
+  parseLinkHeader, DOWNLOAD_TIMEOUT_MS, MAX_DOWNLOAD_BYTES,
 } from '../src/client.js';
+import { withCallSignal } from '@chrischall/mcp-utils';
 import type { Account } from '../src/config.js';
 import { EdgeBlockedError } from '@chrischall/mcp-utils';
 
@@ -45,6 +46,11 @@ describe('TokenExpiredError', () => {
   });
   it('appends detail in parens', () => {
     expect(new TokenExpiredError('token', 'extra').message).toContain('(extra)');
+  });
+  it('formats a browser-session message that points at the browser, not the u/p env vars', () => {
+    const msg = new TokenExpiredError('session', undefined, { browser: true }).message;
+    expect(msg).toMatch(/sign back into Canvas in your browser/i);
+    expect(msg).not.toMatch(/CANVAS_USERNAME|CANVAS_PASSWORD/);
   });
 });
 
@@ -86,6 +92,19 @@ describe('CanvasClient.request (token mode)', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 404 }));
     const c = new CanvasClient(tokenAccount);
     await expect(c.request('/api/v1/x')).rejects.toThrow('Canvas 404 /api/v1/x');
+  });
+
+  it.each([
+    [404, ''],
+    [422, 'bad'],
+  ])('drops the query string from a Canvas %i error message', async (status, body) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(body, { status }));
+    const c = new CanvasClient(tokenAccount);
+    const err = await c.request('https://cms.instructure.com/api/v1/x?page=bookmark:SECRETC&verifier=SECRETV')
+      .catch((e: Error) => e);
+    expect((err as Error).message).toMatch(new RegExp(`^Canvas ${status}`));
+    expect((err as Error).message).toContain('https://cms.instructure.com/api/v1/x');
+    expect((err as Error).message).not.toMatch(/SECRET/);
   });
 
   it('throws CanvasUnreachableError on 5xx', async () => {
@@ -271,8 +290,28 @@ describe('CanvasClient (session mode, browser lift from fetchproxy)', () => {
     const refreshSession = vi.fn(async () => 'canvas_session=dead');
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 401 }));
     const c = new CanvasClient(fetchproxyAccount(), { sessionLogin: vi.fn(), refreshSession });
-    await expect(c.request('/x')).rejects.toBeInstanceOf(TokenExpiredError);
+    const err = await c.request('/x').catch((e: Error) => e);
+    expect(err).toBeInstanceOf(TokenExpiredError);
+    // The user never set CANVAS_USERNAME/PASSWORD on this path (fleet-audit#376).
+    expect((err as Error).message).toMatch(/browser/);
+    expect((err as Error).message).not.toMatch(/CANVAS_USERNAME/);
     expect(refreshSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('names the browser remedy when a download 401 survives the re-lift', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-dl-'));
+    try {
+      const refreshSession = vi.fn(async () => 'canvas_session=dead');
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 401 }));
+      const c = new CanvasClient(fetchproxyAccount(), { sessionLogin: vi.fn(), refreshSession });
+      const err = await c.download('https://cms.instructure.com/files/1/download', join(dir, 'f.pdf'))
+        .catch((e: Error) => e);
+      expect(err).toBeInstanceOf(TokenExpiredError);
+      expect((err as Error).message).toMatch(/browser/);
+      expect((err as Error).message).not.toMatch(/CANVAS_USERNAME/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('without a lift, session mode still uses the form login (the env path)', async () => {
@@ -650,6 +689,16 @@ describe('CanvasClient.download', () => {
       .rejects.toThrow('Canvas download 503');
   });
 
+  it.each([404, 403])('keeps the file verifier out of a download %i error message', async (status) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status }));
+    const c = new CanvasClient(tokenAccount);
+    const err = await c.download(
+      'https://cms.instructure.com/files/9/download?download_frd=1&verifier=SECRETV', join(dir, 'r.pdf'),
+    ).catch((e: Error) => e);
+    expect((err as Error).message).toContain(`Canvas download ${status} for https://cms.instructure.com/files/9/download`);
+    expect((err as Error).message).not.toContain('SECRETV');
+  });
+
   it('accepts relative paths and prepends baseUrl', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(new Uint8Array([0]), { status: 200 }));
@@ -853,5 +902,111 @@ describe('CanvasClient.download — symlink-safe write (fleet-audit#925)', () =>
     const dest = join(dir, 'r.pdf');
     await c.download(url, dest);
     expect((await stat(dest)).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe('CanvasClient — timeouts, cancellation and streamed downloads (fleet-audit#989)', () => {
+  let dir: string;
+  beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'canvas-dl-')); });
+  afterEach(async () => { await rm(dir, { recursive: true, force: true }); });
+  const url = 'https://cms.instructure.com/files/1/download';
+
+  /** A body that arrives in pieces, optionally failing after them. */
+  function chunked(chunks: number[][], failWith?: Error): ReadableStream<Uint8Array> {
+    let i = 0;
+    return new ReadableStream({
+      pull(ctrl) {
+        if (i < chunks.length) ctrl.enqueue(new Uint8Array(chunks[i++]));
+        else if (failWith) ctrl.error(failWith);
+        else ctrl.close();
+      },
+    });
+  }
+
+  it('gives every API request a 30s timeout signal', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({}));
+    await new CanvasClient(tokenAccount).request('/x');
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledWith(30_000);
+  });
+
+  it("aborts the Canvas fetch when the tool call is cancelled", async () => {
+    const call = new AbortController();
+    call.abort(new Error('cancelled'));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({}));
+    await withCallSignal(call.signal, () => new CanvasClient(tokenAccount).request('/x'));
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal!.aborted).toBe(true);
+  });
+
+  it('gives the OAuth token exchange a timeout signal too', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonRes({ access_token: 'at', expires_in: 3600 }))
+      .mockResolvedValueOnce(jsonRes({}));
+    await new CanvasClient(oauthAccount()).request('/x');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://cms.instructure.com/login/oauth2/token');
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('gives a download the longer download timeout', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1])));
+    await new CanvasClient(tokenAccount, { outputDir: dir }).download(url, join(dir, 'a.bin'));
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledWith(DOWNLOAD_TIMEOUT_MS);
+    expect(DOWNLOAD_TIMEOUT_MS).toBeGreaterThan(30_000);
+  });
+
+  it('streams a multi-chunk body to disk', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(chunked([[1, 2], [3], [4, 5, 6]])));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    const meta = await c.download(url, join(dir, 'a.bin'));
+    expect(meta.bytes).toBe(6);
+    expect([...await readFile(join(dir, 'a.bin'))]).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('writes an empty file for a bodiless 200', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    expect((await c.download(url, join(dir, 'a.bin'))).bytes).toBe(0);
+    expect((await readFile(join(dir, 'a.bin'))).byteLength).toBe(0);
+  });
+
+  it('refuses up front when Content-Length exceeds the cap, writing nothing', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(new Uint8Array(10), { headers: { 'content-length': '10' } }),
+    );
+    const c = new CanvasClient(tokenAccount, { outputDir: dir, maxDownloadBytes: 5 });
+    const err = await c.download(url, join(dir, 'a.bin')).catch((e: Error) => e);
+    expect(err).toBeInstanceOf(DownloadTooLargeError);
+    expect((err as Error).message).toMatch(/5 bytes/);
+    await expect(stat(join(dir, 'a.bin'))).rejects.toThrow();
+  });
+
+  it('refuses an oversize Content-Length even with no body to cancel', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(null, { headers: { 'content-length': '10' } }),
+    );
+    const c = new CanvasClient(tokenAccount, { outputDir: dir, maxDownloadBytes: 5 });
+    await expect(c.download(url, join(dir, 'a.bin'))).rejects.toBeInstanceOf(DownloadTooLargeError);
+  });
+
+  it('stops and removes the partial file once a streamed body passes the cap', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(chunked([[1, 2, 3], [4, 5, 6]])));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir, maxDownloadBytes: 5 });
+    await expect(c.download(url, join(dir, 'a.bin'))).rejects.toBeInstanceOf(DownloadTooLargeError);
+    await expect(stat(join(dir, 'a.bin'))).rejects.toThrow();
+  });
+
+  it('removes the partial file when the body fails mid-stream (timeout / cancel)', async () => {
+    const abort = new DOMException('The operation was aborted.', 'AbortError');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(chunked([[1, 2]], abort)));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    await expect(c.download(url, join(dir, 'a.bin'))).rejects.toThrow(/aborted/);
+    await expect(stat(join(dir, 'a.bin'))).rejects.toThrow();
+  });
+
+  it('defaults the cap to 1 GiB', () => {
+    expect(MAX_DOWNLOAD_BYTES).toBe(1024 ** 3);
   });
 });

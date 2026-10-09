@@ -44,7 +44,8 @@ interface Result {
 }
 
 async function healthcheck(resolved: ResolvedAuth): Promise<Result> {
-  const h = await createTestHarness((server) => registerHealthcheckTools(server, { resolved, configError: null }));
+  const client = new CanvasClient(resolved.account, { refreshSession: resolved.refresh });
+  const h = await createTestHarness((server) => registerHealthcheckTools(server, { resolved, configError: null, client }));
   const res = await h.client.callTool({ name: 'canvas_healthcheck', arguments: {} });
   await h.close?.();
   return parseToolResult<Result>(res as never);

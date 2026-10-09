@@ -36,6 +36,11 @@ export function registerAssignmentTools(server: McpServer, client: CanvasClient)
     inputSchema: missingArgs,
   }, async (rawArgs) => {
     const args = missingArgs.parse(rawArgs);
+    // Canvas rejects an observee's missing_submissions without course_ids[]
+    // with a bare 400; name the missing argument instead.
+    if (args.observeeId !== undefined && !args.courseIds?.length) {
+      throw new Error('courseIds is required when observeeId is set (list the observee\'s courses with canvas_list_courses).');
+    }
     const path = buildPath(`/api/v1/${userSegment(args.observeeId)}/missing_submissions`, {
       'include[]': ['planner_overrides', 'course'],
       'filter[]': 'submittable',

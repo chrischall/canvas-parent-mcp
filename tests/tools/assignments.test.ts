@@ -4,6 +4,7 @@ import { CanvasClient } from '../../src/client.js';
 import { registerAssignmentTools } from '../../src/tools/assignments.js';
 
 type Handler = (args: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }> }>;
+type ToolConfig = { description: string; inputSchema: { shape: Record<string, { description?: string }> } };
 const account = { mode: 'token' as const, name: 'cms', baseUrl: 'https://cms.instructure.com', token: 't' };
 
 function setup() {
@@ -11,12 +12,14 @@ function setup() {
   const pagSpy = vi.spyOn(client, 'requestPaginated').mockResolvedValue([] as never);
   const server = new McpServer({ name: 'test', version: '0.0.0' });
   const handlers = new Map<string, Handler>();
-  vi.spyOn(server, 'registerTool').mockImplementation((name: string, _c: unknown, cb: unknown) => {
+  const configs = new Map<string, ToolConfig>();
+  vi.spyOn(server, 'registerTool').mockImplementation((name: string, c: unknown, cb: unknown) => {
     handlers.set(name, cb as Handler);
+    configs.set(name, c as ToolConfig);
     return undefined as never;
   });
   registerAssignmentTools(server, client);
-  return { handlers, pagSpy };
+  return { handlers, configs, pagSpy };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -40,6 +43,14 @@ describe('canvas_list_assignments', () => {
 });
 
 describe('canvas_list_missing_submissions', () => {
+  it('documents the conditional courseIds requirement on the tool and on both fields', () => {
+    const { configs } = setup();
+    const config = configs.get('canvas_list_missing_submissions')!;
+    expect(config.description).toMatch(/For an observee, courseIds is required/);
+    expect(config.inputSchema.shape.observeeId.description).toMatch(/courseIds is required/);
+    expect(config.inputSchema.shape.courseIds.description).toMatch(/Required \(non-empty\) when observeeId is set/);
+  });
+
   it('builds /api/v1/users/self/missing_submissions with filter[]=submittable when no observeeId', async () => {
     const { handlers, pagSpy } = setup();
     await handlers.get('canvas_list_missing_submissions')!({});

@@ -10,8 +10,8 @@ const listArgs = z.object({
 });
 
 const missingArgs = z.object({
-  observeeId: z.string().optional(),
-  courseIds: z.array(z.string()).optional().describe('Required when observeeId is set.'),
+  observeeId: z.string().optional().describe("A linked observee's user id. When set, courseIds is required."),
+  courseIds: z.array(z.string()).optional().describe('Required (non-empty) when observeeId is set; optional otherwise.'),
 });
 
 export function registerAssignmentTools(server: McpServer, client: CanvasClient): void {

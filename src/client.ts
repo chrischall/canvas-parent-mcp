@@ -165,7 +165,7 @@ export class CanvasClient {
 
     const res = await this.authedFetch(url, {});
     await throwIfEdgeBlocked(res, 'GET', path);
-    if (res.status === 401) throw new TokenExpiredError(this.account.mode);
+    if (res.status === 401) throw this.expiredError();
     // A file URL's `verifier` query param is a bearer-like capability for that
     // file; keep it out of an error the model and transcript will see.
     if (res.status === 404) throw new Error(`Canvas download 404 for ${redactPath(path)}`);
@@ -233,7 +233,7 @@ export class CanvasClient {
     // before the status mapping below calls a 401 an expired token (or a 503
     // challenge "unreachable") — chrischall/mcp-host#1015.
     await throwIfEdgeBlocked(res, opts.method ?? 'GET', path);
-    if (res.status === 401) throw new TokenExpiredError(this.account.mode);
+    if (res.status === 401) throw this.expiredError();
     // Query strings stay out of the message: a pagination `next` URL can carry
     // cursors and, on file URLs, a `verifier` capability.
     if (res.status === 404) throw new Error(`Canvas 404 ${redactPath(path)}`);
@@ -277,6 +277,15 @@ export class CanvasClient {
     ) {
       this.auth.invalidate();
     }
+  }
+
+  /**
+   * The error for a 401 that survived any re-auth. On the fetchproxy path the
+   * session came from the browser and the user never set CANVAS_USERNAME /
+   * CANVAS_PASSWORD, so the message must point at the browser instead.
+   */
+  private expiredError(): TokenExpiredError {
+    return new TokenExpiredError(this.account.mode, undefined, { browser: this.refreshSession !== null });
   }
 
   /** Whether a 401 in the current mode can be recovered by re-running login(). */
@@ -390,12 +399,22 @@ function injectPerPage(pathOrUrl: string, perPage: number): string {
 }
 
 export class TokenExpiredError extends Error {
-  constructor(public mode: 'token' | 'oauth' | 'session', public detail?: string) {
+  /**
+   * `opts.browser`: the session was lifted from the user's signed-in browser
+   * tab (the fetchproxy path), not minted from CANVAS_USERNAME/PASSWORD.
+   */
+  constructor(
+    public mode: 'token' | 'oauth' | 'session',
+    public detail?: string,
+    opts: { browser?: boolean } = {},
+  ) {
     const base =
       mode === 'token'
         ? 'Canvas access token rejected (401). Check CANVAS_TOKEN — it may be expired or revoked.'
         : mode === 'session'
-          ? 'Canvas session login failed (401). Check CANVAS_USERNAME / CANVAS_PASSWORD — they may have changed, or the account may be locked or behind SSO.'
+          ? opts.browser
+            ? 'Canvas rejected the session read from your browser (401). Sign back into Canvas in your browser (the tab the ContextMint Bridge extension reads), then retry.'
+            : 'Canvas session login failed (401). Check CANVAS_USERNAME / CANVAS_PASSWORD — they may have changed, or the account may be locked or behind SSO.'
           : 'Canvas OAuth refresh failed. Check CANVAS_CLIENT_ID, CANVAS_CLIENT_SECRET, CANVAS_REFRESH_TOKEN.';
     super(detail ? `${base} (${detail})` : base);
     this.name = 'TokenExpiredError';

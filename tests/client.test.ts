@@ -46,6 +46,11 @@ describe('TokenExpiredError', () => {
   it('appends detail in parens', () => {
     expect(new TokenExpiredError('token', 'extra').message).toContain('(extra)');
   });
+  it('formats a browser-session message that points at the browser, not the u/p env vars', () => {
+    const msg = new TokenExpiredError('session', undefined, { browser: true }).message;
+    expect(msg).toMatch(/sign back into Canvas in your browser/i);
+    expect(msg).not.toMatch(/CANVAS_USERNAME|CANVAS_PASSWORD/);
+  });
 });
 
 describe('CanvasUnreachableError', () => {
@@ -284,8 +289,28 @@ describe('CanvasClient (session mode, browser lift from fetchproxy)', () => {
     const refreshSession = vi.fn(async () => 'canvas_session=dead');
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 401 }));
     const c = new CanvasClient(fetchproxyAccount(), { sessionLogin: vi.fn(), refreshSession });
-    await expect(c.request('/x')).rejects.toBeInstanceOf(TokenExpiredError);
+    const err = await c.request('/x').catch((e: Error) => e);
+    expect(err).toBeInstanceOf(TokenExpiredError);
+    // The user never set CANVAS_USERNAME/PASSWORD on this path (fleet-audit#376).
+    expect((err as Error).message).toMatch(/browser/);
+    expect((err as Error).message).not.toMatch(/CANVAS_USERNAME/);
     expect(refreshSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('names the browser remedy when a download 401 survives the re-lift', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'canvas-dl-'));
+    try {
+      const refreshSession = vi.fn(async () => 'canvas_session=dead');
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 401 }));
+      const c = new CanvasClient(fetchproxyAccount(), { sessionLogin: vi.fn(), refreshSession });
+      const err = await c.download('https://cms.instructure.com/files/1/download', join(dir, 'f.pdf'))
+        .catch((e: Error) => e);
+      expect(err).toBeInstanceOf(TokenExpiredError);
+      expect((err as Error).message).toMatch(/browser/);
+      expect((err as Error).message).not.toMatch(/CANVAS_USERNAME/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('without a lift, session mode still uses the form login (the env path)', async () => {

@@ -17,6 +17,7 @@
 // plus deletion-marker handling).
 
 import { CookieJar, parseCookieJar, truncateErrorMessage } from '@chrischall/mcp-utils';
+import { requestSignal } from './signal.js';
 
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
@@ -72,6 +73,7 @@ export async function sessionLogin(opts: {
 
   // 1. GET the login page to capture the CSRF cookie + authenticity_token form value.
   const getRes = await fetch(loginUrl, {
+    signal: requestSignal(),
     headers: {
       'User-Agent': USER_AGENT,
       Accept: 'text/html,application/xhtml+xml',
@@ -108,6 +110,7 @@ export async function sessionLogin(opts: {
 
   const postRes = await fetch(loginUrl, {
     method: 'POST',
+    signal: requestSignal(),
     redirect: 'manual',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',

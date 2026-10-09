@@ -5,9 +5,10 @@ import { join } from 'path';
 import {
   CanvasClient, TokenExpiredError, CanvasUnreachableError,
   InvalidPathError, ParentDirectoryMissingError, FileExistsError,
-  DownloadUrlRejectedError, DownloadDestinationRejectedError,
-  parseLinkHeader,
+  DownloadUrlRejectedError, DownloadDestinationRejectedError, DownloadTooLargeError,
+  parseLinkHeader, DOWNLOAD_TIMEOUT_MS, MAX_DOWNLOAD_BYTES,
 } from '../src/client.js';
+import { withCallSignal } from '@chrischall/mcp-utils';
 import type { Account } from '../src/config.js';
 import { EdgeBlockedError } from '@chrischall/mcp-utils';
 
@@ -901,5 +902,111 @@ describe('CanvasClient.download — symlink-safe write (fleet-audit#925)', () =>
     const dest = join(dir, 'r.pdf');
     await c.download(url, dest);
     expect((await stat(dest)).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe('CanvasClient — timeouts, cancellation and streamed downloads (fleet-audit#989)', () => {
+  let dir: string;
+  beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'canvas-dl-')); });
+  afterEach(async () => { await rm(dir, { recursive: true, force: true }); });
+  const url = 'https://cms.instructure.com/files/1/download';
+
+  /** A body that arrives in pieces, optionally failing after them. */
+  function chunked(chunks: number[][], failWith?: Error): ReadableStream<Uint8Array> {
+    let i = 0;
+    return new ReadableStream({
+      pull(ctrl) {
+        if (i < chunks.length) ctrl.enqueue(new Uint8Array(chunks[i++]));
+        else if (failWith) ctrl.error(failWith);
+        else ctrl.close();
+      },
+    });
+  }
+
+  it('gives every API request a 30s timeout signal', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({}));
+    await new CanvasClient(tokenAccount).request('/x');
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledWith(30_000);
+  });
+
+  it("aborts the Canvas fetch when the tool call is cancelled", async () => {
+    const call = new AbortController();
+    call.abort(new Error('cancelled'));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonRes({}));
+    await withCallSignal(call.signal, () => new CanvasClient(tokenAccount).request('/x'));
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal!.aborted).toBe(true);
+  });
+
+  it('gives the OAuth token exchange a timeout signal too', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonRes({ access_token: 'at', expires_in: 3600 }))
+      .mockResolvedValueOnce(jsonRes({}));
+    await new CanvasClient(oauthAccount()).request('/x');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://cms.instructure.com/login/oauth2/token');
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('gives a download the longer download timeout', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1])));
+    await new CanvasClient(tokenAccount, { outputDir: dir }).download(url, join(dir, 'a.bin'));
+    expect((fetchMock.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledWith(DOWNLOAD_TIMEOUT_MS);
+    expect(DOWNLOAD_TIMEOUT_MS).toBeGreaterThan(30_000);
+  });
+
+  it('streams a multi-chunk body to disk', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(chunked([[1, 2], [3], [4, 5, 6]])));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    const meta = await c.download(url, join(dir, 'a.bin'));
+    expect(meta.bytes).toBe(6);
+    expect([...await readFile(join(dir, 'a.bin'))]).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('writes an empty file for a bodiless 200', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    expect((await c.download(url, join(dir, 'a.bin'))).bytes).toBe(0);
+    expect((await readFile(join(dir, 'a.bin'))).byteLength).toBe(0);
+  });
+
+  it('refuses up front when Content-Length exceeds the cap, writing nothing', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(new Uint8Array(10), { headers: { 'content-length': '10' } }),
+    );
+    const c = new CanvasClient(tokenAccount, { outputDir: dir, maxDownloadBytes: 5 });
+    const err = await c.download(url, join(dir, 'a.bin')).catch((e: Error) => e);
+    expect(err).toBeInstanceOf(DownloadTooLargeError);
+    expect((err as Error).message).toMatch(/5 bytes/);
+    await expect(stat(join(dir, 'a.bin'))).rejects.toThrow();
+  });
+
+  it('refuses an oversize Content-Length even with no body to cancel', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(null, { headers: { 'content-length': '10' } }),
+    );
+    const c = new CanvasClient(tokenAccount, { outputDir: dir, maxDownloadBytes: 5 });
+    await expect(c.download(url, join(dir, 'a.bin'))).rejects.toBeInstanceOf(DownloadTooLargeError);
+  });
+
+  it('stops and removes the partial file once a streamed body passes the cap', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(chunked([[1, 2, 3], [4, 5, 6]])));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir, maxDownloadBytes: 5 });
+    await expect(c.download(url, join(dir, 'a.bin'))).rejects.toBeInstanceOf(DownloadTooLargeError);
+    await expect(stat(join(dir, 'a.bin'))).rejects.toThrow();
+  });
+
+  it('removes the partial file when the body fails mid-stream (timeout / cancel)', async () => {
+    const abort = new DOMException('The operation was aborted.', 'AbortError');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(chunked([[1, 2]], abort)));
+    const c = new CanvasClient(tokenAccount, { outputDir: dir });
+    await expect(c.download(url, join(dir, 'a.bin'))).rejects.toThrow(/aborted/);
+    await expect(stat(join(dir, 'a.bin'))).rejects.toThrow();
+  });
+
+  it('defaults the cap to 1 GiB', () => {
+    expect(MAX_DOWNLOAD_BYTES).toBe(1024 ** 3);
   });
 });

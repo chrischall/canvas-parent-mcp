@@ -166,8 +166,10 @@ export class CanvasClient {
     const res = await this.authedFetch(url, {});
     await throwIfEdgeBlocked(res, 'GET', path);
     if (res.status === 401) throw new TokenExpiredError(this.account.mode);
-    if (res.status === 404) throw new Error(`Canvas download 404 for ${path}`);
-    if (!res.ok) throw new Error(`Canvas download ${res.status} for ${path}`);
+    // A file URL's `verifier` query param is a bearer-like capability for that
+    // file; keep it out of an error the model and transcript will see.
+    if (res.status === 404) throw new Error(`Canvas download 404 for ${redactPath(path)}`);
+    if (!res.ok) throw new Error(`Canvas download ${res.status} for ${redactPath(path)}`);
 
     const buf = new Uint8Array(await res.arrayBuffer());
     await writeConfined(dest, destinationPath, buf, opts.overwrite === true);
@@ -232,9 +234,11 @@ export class CanvasClient {
     // challenge "unreachable") — chrischall/mcp-host#1015.
     await throwIfEdgeBlocked(res, opts.method ?? 'GET', path);
     if (res.status === 401) throw new TokenExpiredError(this.account.mode);
-    if (res.status === 404) throw new Error(`Canvas 404 ${path}`);
+    // Query strings stay out of the message: a pagination `next` URL can carry
+    // cursors and, on file URLs, a `verifier` capability.
+    if (res.status === 404) throw new Error(`Canvas 404 ${redactPath(path)}`);
     if (res.status >= 500) throw new CanvasUnreachableError(res.status);
-    if (!res.ok) throw withBodyPreview(new Error(`Canvas ${res.status} ${res.statusText} for ${path}`), await res.text());
+    if (!res.ok) throw withBodyPreview(new Error(`Canvas ${res.status} ${res.statusText} for ${redactPath(path)}`), await res.text());
     return res;
   }
 
@@ -373,7 +377,7 @@ async function throwIfEdgeBlocked(res: Response, method: string, path: string): 
   if (hit) throw new EdgeBlockedError(res.status, hit.vendor, { service: 'Canvas', method, path: redactPath(path) });
 }
 
-/** A request target without its query string (a pagination URL can carry ids/cursors). */
+/** A request target without its query string (a pagination URL can carry ids/cursors, a file URL its verifier). */
 function redactPath(pathOrUrl: string): string {
   return pathOrUrl.split('?')[0];
 }

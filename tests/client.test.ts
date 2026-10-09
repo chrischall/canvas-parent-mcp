@@ -88,6 +88,19 @@ describe('CanvasClient.request (token mode)', () => {
     await expect(c.request('/api/v1/x')).rejects.toThrow('Canvas 404 /api/v1/x');
   });
 
+  it.each([
+    [404, ''],
+    [422, 'bad'],
+  ])('drops the query string from a Canvas %i error message', async (status, body) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(body, { status }));
+    const c = new CanvasClient(tokenAccount);
+    const err = await c.request('https://cms.instructure.com/api/v1/x?page=bookmark:SECRETC&verifier=SECRETV')
+      .catch((e: Error) => e);
+    expect((err as Error).message).toMatch(new RegExp(`^Canvas ${status}`));
+    expect((err as Error).message).toContain('https://cms.instructure.com/api/v1/x');
+    expect((err as Error).message).not.toMatch(/SECRET/);
+  });
+
   it('throws CanvasUnreachableError on 5xx', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 503 }));
     const c = new CanvasClient(tokenAccount);
@@ -648,6 +661,16 @@ describe('CanvasClient.download', () => {
     const c = new CanvasClient(tokenAccount);
     await expect(c.download('https://cms.instructure.com/files/9/download', join(dir, 'r.pdf')))
       .rejects.toThrow('Canvas download 503');
+  });
+
+  it.each([404, 403])('keeps the file verifier out of a download %i error message', async (status) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status }));
+    const c = new CanvasClient(tokenAccount);
+    const err = await c.download(
+      'https://cms.instructure.com/files/9/download?download_frd=1&verifier=SECRETV', join(dir, 'r.pdf'),
+    ).catch((e: Error) => e);
+    expect((err as Error).message).toContain(`Canvas download ${status} for https://cms.instructure.com/files/9/download`);
+    expect((err as Error).message).not.toContain('SECRETV');
   });
 
   it('accepts relative paths and prepends baseUrl', async () => {

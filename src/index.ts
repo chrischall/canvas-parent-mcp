@@ -58,7 +58,7 @@ const client = resolved
 // host's install-time `tools/list` succeeds.
 await runMcp({
   name: 'canvas',
-  version: '2.1.8', // x-release-please-version
+  version: '2.1.9', // x-release-please-version
   tools: [
     // Outside the `if (resolved)` on purpose: an unconfigured server must
     // still expose something that can say WHY (see the tool's docblock).

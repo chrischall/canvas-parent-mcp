@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.1.9](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.8...v2.1.9) (2026-10-09)
+
+
+### Bug Fixes
+
+* annotate tools truthfully and sync manifests with the served tools ([#249](https://github.com/chrischall/canvas-parent-mcp/issues/249)) ([ecc2a65](https://github.com/chrischall/canvas-parent-mcp/commit/ecc2a657a7d61e792356a750bb1152ce9e89e1c2))
+* **assignments:** document courseIds requirement on missing-submissions fields ([#246](https://github.com/chrischall/canvas-parent-mcp/issues/246)) ([d1a9314](https://github.com/chrischall/canvas-parent-mcp/commit/d1a9314c13888fac15afd503769db93ace9ae70f))
+* declare the plugin MCP config under the mcpServers key Claude Code reads ([#250](https://github.com/chrischall/canvas-parent-mcp/issues/250)) ([a078179](https://github.com/chrischall/canvas-parent-mcp/commit/a078179d1dbd8a4f4a48e64b710fa8102f17d923))
+* **deps:** update @chrischall/mcp-utils to 3.0.0 ([#248](https://github.com/chrischall/canvas-parent-mcp/issues/248)) ([cd8a44b](https://github.com/chrischall/canvas-parent-mcp/commit/cd8a44bea373f26e542b2826e9372d395aa483f5))
+* resolve low-severity audit findings ([#243](https://github.com/chrischall/canvas-parent-mcp/issues/243)) ([47144a7](https://github.com/chrischall/canvas-parent-mcp/commit/47144a763a5c267dfdc11b41abb20e26d1e6a0ba))
+
+
+### Documentation
+
+* clarify session-cache plaintext storage and lazy browser-session lifting ([#247](https://github.com/chrischall/canvas-parent-mcp/issues/247)) ([220667e](https://github.com/chrischall/canvas-parent-mcp/commit/220667ecd1ae3350855f8d8c3efa3c94ce8ca68d))
+
 ## [2.1.8](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.7...v2.1.8) (2026-10-07)
 
 

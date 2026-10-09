@@ -101,6 +101,12 @@ If your account uses SSO and you can't use fetchproxy (e.g. headless server), mi
 
 See `.env.example`.
 
+### Session cache
+
+In username/password and OAuth modes the signed-in session is cached between runs, so a restart does not log in (or spend a refresh-token exchange) again. The cache file — `$MCP_DATA_DIR/.canvas-parent-mcp/session.json` by default, or `CANVAS_SESSION_FILE` — holds the live `canvas_session` + `pseudonym_credentials` cookies or the OAuth access token **in plaintext**. It is created owner-only (0600, in a 0700 directory), and only the credential binding is stored as a salted digest; your username, password and refresh token are never written to it. Token and fetchproxy modes never write the cache.
+
+Backup and sync tools that run as you can still copy that file. On a shared or backed-up machine, set `CANVAS_SESSION_CACHE=false` to keep the session in memory only (each start then re-authenticates).
+
 ### Bootstrapping OAuth via the mobile QR code
 
 If your Canvas admin has disabled personal-access-token creation (some institutions restrict tokens to "the mobile app only") AND your account uses SSO so username/password can't auth, you can mint OAuth credentials by going through the same QR-login flow that the official Canvas mobile apps use:

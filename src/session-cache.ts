@@ -75,11 +75,20 @@ export interface SessionCacheOptions {
  * The session cache for this account, or `null` when caching is off, or when
  * the mode has nothing worth caching (see {@link bindingFor}).
  *
+ * What is on disk: the minted auth headers THEMSELVES, in plaintext — the
+ * `canvas_session` + `pseudonym_credentials` cookies for a session account
+ * (the latter lives ~14 days), or the `Authorization: Bearer` access token for
+ * an oauth one. `@chrischall/mcp-utils` writes the file 0600 inside a 0700
+ * directory, so other local users cannot read it, but backup and sync tools
+ * running as you can. Set `CANVAS_SESSION_CACHE=false` on shared or backed-up
+ * machines to keep the session in memory only.
+ *
  * The record is bound to the credentials that minted it — username+password for
  * a session account, refresh token + client id for an oauth one — so rotating
- * any of them discards it. Only a salted digest is written, never the values.
- * The base URL is part of the binding too, so pointing the same credentials at
- * a different Canvas instance does not reuse a session from the old one.
+ * any of them discards it. Only the BINDING is hashed: a salted digest of those
+ * credentials is stored, never the username, password or refresh token. The
+ * base URL is part of the binding too, so pointing the same credentials at a
+ * different Canvas instance does not reuse a session from the old one.
  */
 export function createSessionCache(
   account: Account,

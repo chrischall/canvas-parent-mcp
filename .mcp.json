@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "canvas": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/bundle.js"],
+      "command": "npx",
+      "args": ["-y", "canvas-parent-mcp"],
       "env": {
         "CANVAS_BASE_URL": "${CANVAS_BASE_URL}",
         "CANVAS_TOKEN": "${CANVAS_TOKEN}",

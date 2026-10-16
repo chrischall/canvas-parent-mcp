@@ -6,7 +6,7 @@ import {
   CanvasClient, TokenExpiredError, CanvasUnreachableError,
   InvalidPathError, ParentDirectoryMissingError, FileExistsError,
   DownloadUrlRejectedError, DownloadDestinationRejectedError, DownloadTooLargeError,
-  parseLinkHeader, DOWNLOAD_TIMEOUT_MS, MAX_DOWNLOAD_BYTES,
+  parseLinkHeader, DOWNLOAD_TIMEOUT_MS, MAX_DOWNLOAD_BYTES, PaginationOriginError,
 } from '../src/client.js';
 import { withCallSignal } from '@chrischall/mcp-utils';
 import type { Account } from '../src/config.js';
@@ -597,6 +597,32 @@ describe('CanvasClient.requestPaginated', () => {
     const c = new CanvasClient(tokenAccount);
     expect(await c.requestPaginated<number>('/api/v1/x')).toEqual([1, 2, 3, 4]);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  // The Link header is upstream-controlled; following it carries the parent's
+  // credential, so the next page must stay on the configured Canvas origin.
+  it.each([
+    ['another origin', 'https://elsewhere.example/api/v1/x?page=2'],
+    ['plaintext on the same host', 'http://cms.instructure.com/api/v1/x?page=2'],
+    ['another port on the same host', 'https://cms.instructure.com:8443/api/v1/x?page=2'],
+    ['userinfo smuggled into the URL', 'https://user:pw@cms.instructure.com/api/v1/x?page=2'],
+    ['an unparseable URL', 'https://[not-a-host/api/v1/x?page=2'],
+  ])('refuses a rel="next" on %s without sending a request to it', async (_label, next) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonRes([1], { headers: { link: `<${next}>; rel="next"` } }))
+      .mockResolvedValueOnce(jsonRes([2]));
+    const c = new CanvasClient(tokenAccount);
+    await expect(c.requestPaginated<number>('/api/v1/x')).rejects.toThrow(PaginationOriginError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves a relative rel="next" against the Canvas origin', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonRes([1], { headers: { link: '</api/v1/x?page=2>; rel="next"' } }))
+      .mockResolvedValueOnce(jsonRes([2]));
+    const c = new CanvasClient(tokenAccount);
+    expect(await c.requestPaginated<number>('/api/v1/x')).toEqual([1, 2]);
+    expect(fetchMock.mock.calls[1][0]).toBe('https://cms.instructure.com/api/v1/x?page=2');
   });
 
   it('stops at maxPages even if rel="next" persists', async () => {

@@ -139,9 +139,25 @@ export class CanvasClient {
       const linkHeader = res.headers.get('link');
       const next = linkHeader ? parseLinkHeader(linkHeader).next : undefined;
       if (!next) break;
-      url = next;
+      url = this.pinPaginationUrl(next);
     }
     return out;
+  }
+
+  /**
+   * The Link header is upstream-controlled, and the next hop carries the
+   * parent's credential (Bearer token or session cookies). Only follow it on
+   * the configured Canvas origin over https; anything else is refused rather
+   * than fetched — a truncated list reported as complete would mislead too.
+   */
+  private pinPaginationUrl(next: string): string {
+    const base = new URL(this.account.baseUrl);
+    let parsed: URL;
+    try { parsed = new URL(next, base); } catch { throw new PaginationOriginError(base.origin); }
+    if (parsed.protocol !== 'https:' || parsed.origin !== base.origin || parsed.username || parsed.password) {
+      throw new PaginationOriginError(base.origin);
+    }
+    return parsed.href;
   }
 
   /**
@@ -452,6 +468,13 @@ export class CanvasUnreachableError extends Error {
   constructor(public status: number) {
     super(`Canvas unreachable (status ${status})`);
     this.name = 'CanvasUnreachableError';
+  }
+}
+
+export class PaginationOriginError extends Error {
+  constructor(public origin: string) {
+    super(`PaginationOriginRejected: Canvas sent a next-page link off ${origin}; stopped without following it (the request carries your Canvas credential).`);
+    this.name = 'PaginationOriginError';
   }
 }
 

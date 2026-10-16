@@ -26,3 +26,28 @@ describe('plugin.json', () => {
     expect(existsSync(join(ROOT, plugin.mcpServers as string))).toBe(true);
   });
 });
+
+describe('manifest.json (.mcpb) env surface', () => {
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')) as {
+    server: { mcp_config: { env: Record<string, string> } };
+    user_config: Record<string, unknown>;
+  };
+  const server = JSON.parse(readFileSync(join(ROOT, 'server.json'), 'utf8')) as {
+    packages: { environmentVariables?: { name: string }[] }[];
+  };
+
+  it('forwards every env var server.json documents, so a Desktop user can set it', () => {
+    const documented = server.packages.flatMap((p) => (p.environmentVariables ?? []).map((v) => v.name));
+    expect(documented.length).toBeGreaterThan(0);
+    const missing = documented.filter((name) => !(name in manifest.server.mcp_config.env));
+    expect(missing).toEqual([]);
+  });
+
+  it('maps every forwarded env var to a declared user_config key', () => {
+    const dangling = Object.entries(manifest.server.mcp_config.env)
+      .map(([name, value]) => [name, /^\$\{user_config\.([a-z_]+)\}$/.exec(value)?.[1]] as const)
+      .filter(([, key]) => !key || !(key in manifest.user_config))
+      .map(([name]) => name);
+    expect(dangling).toEqual([]);
+  });
+});

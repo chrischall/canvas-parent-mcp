@@ -25,6 +25,8 @@
         "CANVAS_NAME": "${user_config.canvas_name}",
         "CANVAS_OUTPUT_DIR": "${user_config.canvas_output_dir}",
         "CANVAS_SESSION_CACHE": "${user_config.canvas_session_cache}",
+        "CANVAS_SESSION_FILE": "${user_config.canvas_session_file}",
+        "CANVAS_DISABLE_FETCHPROXY": "${user_config.canvas_disable_fetchproxy}",
         "FETCHPROXY_WS_PORT": "${user_config.fetchproxy_ws_port}",
         "FETCHPROXY_WS_HOST": "${user_config.fetchproxy_ws_host}",
         "FETCHPROXY_IDENTITY_DIR": "${user_config.fetchproxy_identity_dir}"
@@ -94,6 +96,18 @@
       "type": "string",
       "title": "Session cache (optional)",
       "description": "Set to false to disable the on-disk session cache and re-authenticate on every process start. Defaults to enabled.",
+      "required": false
+    },
+    "canvas_session_file": {
+      "type": "string",
+      "title": "Session cache file (optional)",
+      "description": "Absolute path for the session cache file. Defaults to $MCP_DATA_DIR/.canvas-parent-mcp/session.json.",
+      "required": false
+    },
+    "canvas_disable_fetchproxy": {
+      "type": "string",
+      "title": "Disable browser fallback (optional)",
+      "description": "Set to 1 to turn off the browser (fetchproxy) fallback, so missing credentials are a hard error instead.",
       "required": false
     },
     "fetchproxy_ws_port": {

@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.10](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.9...v2.1.10) (2026-10-16)
+
+
+### Bug Fixes
+
+* **client:** only follow Canvas next-page links on the configured origin ([#254](https://github.com/chrischall/canvas-parent-mcp/issues/254)) ([3bfd81d](https://github.com/chrischall/canvas-parent-mcp/commit/3bfd81d63199f27fe7bb6996b43fb7861ff35f98))
+* **deps:** bump the production-dependencies group with 2 updates ([#252](https://github.com/chrischall/canvas-parent-mcp/issues/252)) ([b65e673](https://github.com/chrischall/canvas-parent-mcp/commit/b65e67324653c2654b94d12413bec20a79cbed11))
+* **plugin:** launch the published package so marketplace installs start ([#255](https://github.com/chrischall/canvas-parent-mcp/issues/255)) ([371d9be](https://github.com/chrischall/canvas-parent-mcp/commit/371d9be46d8096f7d69978e31f566f946fc9a08d))
+
 ## [2.1.9](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.8...v2.1.9) (2026-10-09)
 
 

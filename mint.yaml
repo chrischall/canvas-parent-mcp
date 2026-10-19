@@ -6,6 +6,12 @@ summary: >-
   The package ships TWO bins, so command.bin below is required — without it the
   install refuses. A token or OAuth registration hosts on any tier; the
   username/password and bridge paths need a browser and do not.
+examples:
+  - prompt: Which assignments are missing or past due for my kids on Canvas right now?
+    note: Uses the observee list, then missing submissions per course.
+  - prompt: What are my child's current grades in each Canvas course?
+  - prompt: What's due on Canvas in the next two weeks, and are there any new teacher announcements?
+    note: Combines planner items with recent course announcements.
 command:
   # REQUIRED: package.json declares canvas-parent-mcp (the server) and
   # canvas-parent-mcp-qr-login (a local CLI). Without this the install refuses.

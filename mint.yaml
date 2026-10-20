@@ -2,9 +2,9 @@ version: 1
 name: Canvas Parent
 slug: canvas-parent
 summary: >-
-  Canvas LMS courses, assignments, grades and messages for a parent/observer.
-  Hosts on any tier with a Canvas token or OAuth; password and browser-bridge
-  sign-in need a browser.
+  Canvas LMS courses, assignments, grades, announcements, calendar and messages
+  for a parent/observer. Signs in with a token, OAuth or password; the
+  browser-bridge fallback needs a signed-in browser.
 examples:
   - prompt: Which assignments are missing or past due for my kids on Canvas right now?
     note: Uses the observee list, then missing submissions per course.

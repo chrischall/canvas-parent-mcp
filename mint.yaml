@@ -3,9 +3,8 @@ name: Canvas Parent
 slug: canvas-parent
 summary: >-
   Canvas LMS courses, assignments, grades and messages for a parent/observer.
-  The package ships TWO bins, so command.bin below is required — without it the
-  install refuses. A token or OAuth registration hosts on any tier; the
-  username/password and bridge paths need a browser and do not.
+  Hosts on any tier with a Canvas token or OAuth; password and browser-bridge
+  sign-in need a browser.
 examples:
   - prompt: Which assignments are missing or past due for my kids on Canvas right now?
     note: Uses the observee list, then missing submissions per course.

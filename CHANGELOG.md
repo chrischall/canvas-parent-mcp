@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.1.11](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.10...v2.1.11) (2026-10-25)
+
+
+### Bug Fixes
+
+* **deps:** bump dotenv from 18.0.6 to 18.0.8 in the production-dependencies group ([#259](https://github.com/chrischall/canvas-parent-mcp/issues/259)) ([31fc215](https://github.com/chrischall/canvas-parent-mcp/commit/31fc215d7c61714f74c12231e7c21042ce6b1769))
+* **deps:** bump the production-dependencies group with 4 updates ([#264](https://github.com/chrischall/canvas-parent-mcp/issues/264)) ([d8a673e](https://github.com/chrischall/canvas-parent-mcp/commit/d8a673e677a7f90869bbde69d546284b86af965b))
+
+
+### Documentation
+
+* **mint:** add sample prompts for the public catalog ([#262](https://github.com/chrischall/canvas-parent-mcp/issues/262)) ([abb25a5](https://github.com/chrischall/canvas-parent-mcp/commit/abb25a5ff902e7b38b77bb4d615030ea96866717))
+* **mint:** fit the catalog summary within 200 characters ([#263](https://github.com/chrischall/canvas-parent-mcp/issues/263)) ([428b78b](https://github.com/chrischall/canvas-parent-mcp/commit/428b78beb3029ba0518c9c0760df9aa1de92fa6d))
+
 ## [2.1.10](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.9...v2.1.10) (2026-10-16)
 
 

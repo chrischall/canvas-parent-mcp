@@ -80,3 +80,13 @@ describe('canvas_list_missing_submissions', () => {
     expect(pagSpy).not.toHaveBeenCalled();
   });
 });
+
+// The gateway's search_tools (and ContextMint's on-device shortlist) match
+// whole words against name, MCP and description. "Do my kids have any
+// homework?" found nothing because no Canvas tool said "homework".
+describe('assignment tools are findable by the words parents use', () => {
+  it.each(['canvas_list_assignments', 'canvas_list_missing_submissions'])('%s mentions homework', (name) => {
+    const { configs } = setup();
+    expect(configs.get(name)!.description.toLowerCase()).toMatch(/\bhomework\b/);
+  });
+});

@@ -16,7 +16,7 @@ const missingArgs = z.object({
 
 export function registerAssignmentTools(server: McpServer, client: CanvasClient): void {
   server.registerTool('canvas_list_assignments', {
-    description: "List a course's assignments (with the user's submission inline). Supports the standard Canvas `bucket` filter.",
+    description: "List a course's assignments — homework, quizzes and projects — with the user's (or child's) submission inline. Supports the standard Canvas `bucket` filter.",
     annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: listArgs,
   }, async (rawArgs) => {
@@ -31,7 +31,7 @@ export function registerAssignmentTools(server: McpServer, client: CanvasClient)
   });
 
   server.registerTool('canvas_list_missing_submissions', {
-    description: "List past-due unsubmitted assignments for the user (or a linked observee). For an observee, courseIds is required.",
+    description: "List missing homework: past-due unsubmitted assignments for the user (or a linked observee, e.g. a child). For an observee, courseIds is required.",
     annotations: { readOnlyHint: true, openWorldHint: true },
     inputSchema: missingArgs,
   }, async (rawArgs) => {

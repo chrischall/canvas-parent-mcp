@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.1.11](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.10...v2.1.11) (2026-11-03)
+
+
+### Bug Fixes
+
+* **deps:** bump dotenv from 18.0.6 to 18.0.8 in the production-dependencies group ([#259](https://github.com/chrischall/canvas-parent-mcp/issues/259)) ([31fc215](https://github.com/chrischall/canvas-parent-mcp/commit/31fc215d7c61714f74c12231e7c21042ce6b1769))
+* **deps:** bump the production-dependencies group across 1 directory with 2 updates ([#266](https://github.com/chrischall/canvas-parent-mcp/issues/266)) ([990a62e](https://github.com/chrischall/canvas-parent-mcp/commit/990a62eed50eafd089141e7ce1a3a681c407199f))
+* **deps:** bump the production-dependencies group with 4 updates ([#264](https://github.com/chrischall/canvas-parent-mcp/issues/264)) ([d8a673e](https://github.com/chrischall/canvas-parent-mcp/commit/d8a673e677a7f90869bbde69d546284b86af965b))
+* **search:** mention homework in the assignment tools' descriptions ([#267](https://github.com/chrischall/canvas-parent-mcp/issues/267)) ([aca689f](https://github.com/chrischall/canvas-parent-mcp/commit/aca689f5ea499a1934787ee0392dd1df7bc04268))
+
+
+### Documentation
+
+* **mint:** add sample prompts for the public catalog ([#262](https://github.com/chrischall/canvas-parent-mcp/issues/262)) ([abb25a5](https://github.com/chrischall/canvas-parent-mcp/commit/abb25a5ff902e7b38b77bb4d615030ea96866717))
+* **mint:** fit the catalog summary within 200 characters ([#263](https://github.com/chrischall/canvas-parent-mcp/issues/263)) ([428b78b](https://github.com/chrischall/canvas-parent-mcp/commit/428b78beb3029ba0518c9c0760df9aa1de92fa6d))
+
 ## [2.1.10](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.9...v2.1.10) (2026-10-16)
 
 

@@ -29,6 +29,16 @@ Mirrors the read-only parent-portal scope of sibling [`infinitecampus-mcp`](http
 
 Tools that the harness will gate as write/IO operations: `canvas_download_file`.
 
+### Planner: child names and a brief view
+
+`canvas_list_planner_items` takes a child by name. At start the server lists your observees once (bounded to 5 s) and publishes their display names as the `observeeId` enum; the tool accepts either a name (any case) or a Canvas user id, and an unknown name is refused with the list of known ones. If the listing fails or you observe nobody, `observeeId` is published as a plain string and ids pass through as before. Two children with the same display name are listed as `Name (id)`.
+
+`view: "brief"` returns one line per planner item, at most 120 characters: `title — due <ISO date or "no date"> — <submitted|not submitted|missing>`. Items with nothing to submit (planner notes, pages, events) carry no status. The default (`view: "full"`) is Canvas's payload, unchanged.
+
+### Context-group hints
+
+Every tool except `canvas_healthcheck` carries a `_meta.mint` hint for hosts that group tools by context (mcp-host's context groups): `domain: "school"` plus an `intent` — `whats-due` for the planner and missing submissions, `whats-new` for announcements, `whats-on` for the calendar tools, `lookup` for the other reads, `other` for the download. The planner (`whats-due`) and announcements (`whats-new`) are marked `canonical`; the planner also names its subject argument (`observeeId`) and range (`startDate`/`endDate`). Hosts that do not read `_meta` see nothing different.
+
 `canvas_download_file` only fetches `/files/…` URLs on your `CANVAS_BASE_URL` host (https), so your Canvas credential is never sent anywhere else, and it only writes inside a download directory: `CANVAS_OUTPUT_DIR` if set, otherwise `~/Downloads`. A relative `destinationPath` is resolved against that directory. It never writes through a symlink at the destination, and new files are created owner-only (0600).
 
 ## Configuration

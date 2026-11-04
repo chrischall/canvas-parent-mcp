@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { textContent, buildPath, userSegment } from './_shared.js';
+import { textContent, buildPath, userSegment, schoolMeta } from './_shared.js';
 import { viewArg, viewResponse } from '../view.js';
 
 const listArgs = z.object({
@@ -17,6 +17,7 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
   server.registerTool('canvas_list_courses', {
     description: 'List active Canvas courses (with course-level grades, total scores, current grading period scores, and term).',
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('lookup'),
     inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
@@ -32,6 +33,7 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
   server.registerTool('canvas_get_course', {
     description: 'Get a single Canvas course with its syllabus, teachers, and term.',
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('lookup'),
     inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);

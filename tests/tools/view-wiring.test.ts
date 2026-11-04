@@ -77,9 +77,17 @@ const WIRED: Array<[string, Record<string, unknown>]> = [
 ];
 
 /**
+ * A different `view`: `full | brief`, not the avatar rung. The planner carries
+ * no user object, so compact would change nothing; its `brief` is the
+ * one-line-per-item form a context-group intent tool asks for (mcp-host spec
+ * 2026-11-03 D6), and `full` — the default — is Canvas's payload verbatim.
+ */
+const BRIEF = ['canvas_list_planner_items'];
+
+/**
  * Left unwired on purpose, and this list is the assertion.
  *
- * The first seven return no user object at all — a live `canvas_list_courses`
+ * The first six return no user object at all — a live `canvas_list_courses`
  * over twelve courses carried no media field of any kind — so a `view` there
  * would be a knob that does not turn, which is worse than no knob. The last two
  * are the opposite case: their PRODUCT is the URL, and stripping would empty
@@ -92,7 +100,6 @@ const UNWIRED = [
   'canvas_list_enrollments',
   'canvas_list_calendar_events',
   'canvas_list_upcoming_events',
-  'canvas_list_planner_items',
   'canvas_list_course_files',
   'canvas_download_file',
 ];
@@ -108,9 +115,17 @@ describe('which tools take a view', () => {
     expect(schemas.get(name) ?? {}).not.toHaveProperty('view');
   });
 
+  it.each(BRIEF)('%s advertises the full|brief view, not the avatar rung', (name) => {
+    const { schemas } = setupAll();
+    const view = schemas.get(name)?.view as z.ZodType;
+    expect(view.safeParse('brief').success).toBe(true);
+    expect(view.safeParse('full').success).toBe(true);
+    expect(view.safeParse('compact').success).toBe(false);
+  });
+
   it('accounts for every registered tool, so a tool added later cannot skip this decision', () => {
     const { handlers } = setupAll();
-    const named = new Set([...WIRED.map(([n]) => n), ...UNWIRED]);
+    const named = new Set([...WIRED.map(([n]) => n), ...UNWIRED, ...BRIEF]);
     expect([...handlers.keys()].filter((n) => !named.has(n))).toEqual([]);
   });
 });

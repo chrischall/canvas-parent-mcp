@@ -13,7 +13,7 @@ import { resolveAuth, type ResolvedAuth } from './auth.js';
 import { registerHealthcheckTools } from './tools/healthcheck.js';
 import { CanvasClient } from './client.js';
 import { registerProfileTools } from './tools/profile.js';
-import { registerObserveeTools } from './tools/observees.js';
+import { registerObserveeTools, loadObserveeDirectory } from './tools/observees.js';
 import { registerCourseTools } from './tools/courses.js';
 import { registerAssignmentTools } from './tools/assignments.js';
 import { registerSubmissionTools } from './tools/submissions.js';
@@ -50,6 +50,12 @@ const client = resolved
   ? new CanvasClient(resolved.account, { refreshSession: resolved.refresh })
   : null;
 
+// The planner's `observeeId` publishes the observees' display names as an
+// enum (context groups, mcp-host spec 2026-11-03 D5), so list them ONCE here —
+// registrars run per served instance — bounded by OBSERVEE_LIST_TIMEOUT_MS.
+// Null (failure, timeout, nobody observed) publishes the property with no enum.
+const observees = client ? await loadObserveeDirectory(client) : null;
+
 // `runMcp` (from @chrischall/mcp-utils) builds the McpServer, runs the
 // registrar, then connects the stdio transport and installs SIGINT/SIGTERM
 // shutdown handlers. The deferred-config-error pattern is preserved by
@@ -72,7 +78,7 @@ await runMcp({
         registerSubmissionTools(server, client);
         registerGradeTools(server, client);
         registerCalendarTools(server, client);
-        registerPlannerTools(server, client);
+        registerPlannerTools(server, client, observees);
         registerAnnouncementTools(server, client);
         registerConversationTools(server, client);
         registerDiscussionTools(server, client);

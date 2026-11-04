@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { buildPath } from './_shared.js';
+import { buildPath, schoolMeta } from './_shared.js';
 import { viewArg, viewResponse } from '../view.js';
 
 const argsSchema = z.object({
@@ -15,6 +15,7 @@ export function registerDiscussionTools(server: McpServer, client: CanvasClient)
   server.registerTool('canvas_list_discussion_topics', {
     description: 'List discussion topics for a course (read-only).',
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('lookup'),
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

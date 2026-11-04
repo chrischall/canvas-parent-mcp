@@ -125,12 +125,29 @@ that is the only place Canvas hangs an avatar: `canvas_get_profile`,
 `canvas_get_submission` / `canvas_list_recent_submissions` (comment authors),
 `canvas_list_announcements`, `canvas_list_discussion_topics` (authors), and
 `canvas_list_conversations` / `canvas_get_conversation` (participants — both
-request `include[]=participant_avatars`). The rest take no `view` at all: courses,
+request `include[]=participant_avatars`). The rest take no avatar `view`: courses,
 assignments, missing submissions, enrollments, calendar, upcoming events and
 planner items carry no user object, and a parameter that changes nothing is worse
 than no parameter. The two file tools are excluded for the opposite reason — their
 product is the URL. `tests/tools/view-wiring.test.ts` pins that set on both sides,
 and fails if a new tool is added without making the call.
+
+The planner is the one exception with a DIFFERENT view: `full | brief`, `full`
+by default and verbatim. `brief` is one line per item (`title — due <date> —
+<status>`, ≤ 120 chars) for mcp-host's context-group intent tools; it is not
+the avatar rung, and the wiring test lists it separately.
+
+### Context-group hints (`_meta.mint`)
+
+Every tool's `registerTool` config carries `_meta: schoolMeta(intent, …)`
+(`_shared.ts`), the shape mcp-host's `mintHintSchema` reads; inert for any other
+host. `tests/tools/mint-hints.test.ts` holds the per-tool intent table, so a new
+tool fails until it declares one. `canvas_healthcheck` is registered by
+mcp-utils and carries none on purpose (a hint-less tool joins no group). The
+planner's `observeeId` enum is built once at start by `loadObserveeDirectory`
+(`observees.ts`, 5 s bound, null on any failure → no `enum` keyword, never an
+empty one) and threaded through `registerPlannerTools`; the handler maps a
+label to the id and refuses an unknown one naming the known labels.
 
 **Both avatar fields are named explicitly in `DROP`, because the shared helper's
 built-in rules miss them.** `MEDIA_KEY` anchors a media noun at the start and

@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { buildPath } from './_shared.js';
+import { buildPath, schoolMeta } from './_shared.js';
 import { viewArg, viewResponse } from '../view.js';
 
 const argsSchema = z.object({
@@ -16,6 +16,7 @@ export function registerAnnouncementTools(server: McpServer, client: CanvasClien
   server.registerTool('canvas_list_announcements', {
     description: "List announcements across one or more courses. `contextCodes` is required (e.g. [\"course_123\"]). Defaults to active-only.",
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('whats-new', { canonical: true, aliases: ['teacher', 'announcements', 'news'] }),
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

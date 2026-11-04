@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { textContent, buildPath } from './_shared.js';
+import { textContent, buildPath, schoolMeta } from './_shared.js';
 
 const eventsArgs = z.object({
   contextCodes: z.array(z.string()).optional().describe('Array like ["course_123", "user_456"].'),
@@ -15,6 +15,7 @@ export function registerCalendarTools(server: McpServer, client: CanvasClient): 
   server.registerTool('canvas_list_calendar_events', {
     description: 'List Canvas calendar events or assignments across selected contexts (courses/users).',
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('whats-on'),
     inputSchema: eventsArgs,
   }, async (rawArgs) => {
     const args = eventsArgs.parse(rawArgs);
@@ -32,6 +33,7 @@ export function registerCalendarTools(server: McpServer, client: CanvasClient): 
   server.registerTool('canvas_list_upcoming_events', {
     description: "List the calling user's upcoming events (Canvas's curated next-7-days view).",
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('whats-on'),
   }, async () => {
     const data = await client.request('/api/v1/users/self/upcoming_events');
     return textContent(data);

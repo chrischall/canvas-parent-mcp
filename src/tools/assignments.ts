@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { textContent, buildPath, userSegment } from './_shared.js';
+import { textContent, buildPath, userSegment, schoolMeta } from './_shared.js';
 
 const listArgs = z.object({
   courseId: z.string(),
@@ -18,6 +18,7 @@ export function registerAssignmentTools(server: McpServer, client: CanvasClient)
   server.registerTool('canvas_list_assignments', {
     description: "List a course's assignments — homework, quizzes and projects — with the user's (or child's) submission inline. Supports the standard Canvas `bucket` filter.",
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('lookup'),
     inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
@@ -33,6 +34,7 @@ export function registerAssignmentTools(server: McpServer, client: CanvasClient)
   server.registerTool('canvas_list_missing_submissions', {
     description: "List missing homework: past-due unsubmitted assignments for the user (or a linked observee, e.g. a child). For an observee, courseIds is required.",
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('whats-due'),
     inputSchema: missingArgs,
   }, async (rawArgs) => {
     const args = missingArgs.parse(rawArgs);

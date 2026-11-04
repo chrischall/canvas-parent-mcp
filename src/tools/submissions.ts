@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { buildPath } from './_shared.js';
+import { buildPath, schoolMeta } from './_shared.js';
 import { viewArg, viewResponse } from '../view.js';
 
 const getArgs = z.object({
@@ -22,6 +22,7 @@ export function registerSubmissionTools(server: McpServer, client: CanvasClient)
   server.registerTool('canvas_get_submission', {
     description: "Get a single submission with rubric assessment and grader comments. userId defaults to 'self'.",
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('lookup'),
     inputSchema: getArgs,
   }, async (rawArgs) => {
     const args = getArgs.parse(rawArgs);
@@ -37,6 +38,7 @@ export function registerSubmissionTools(server: McpServer, client: CanvasClient)
   server.registerTool('canvas_list_recent_submissions', {
     description: "List recently graded submissions in a course. Defaults to a 14-day window for the calling user.",
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('lookup'),
     inputSchema: recentArgs,
   }, async (rawArgs) => {
     const args = recentArgs.parse(rawArgs);

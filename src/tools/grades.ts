@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { textContent, buildPath, userSegment } from './_shared.js';
+import { textContent, buildPath, userSegment, schoolMeta } from './_shared.js';
 
 const argsSchema = z.object({
   observeeId: z.string().optional(),
@@ -11,6 +11,7 @@ export function registerGradeTools(server: McpServer, client: CanvasClient): voi
   server.registerTool('canvas_list_enrollments', {
     description: 'List active student enrollments with per-course grades (current_score, final_score, current_grade, final_grade, current grading period info).',
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('lookup'),
     inputSchema: argsSchema,
   }, async (rawArgs) => {
     const args = argsSchema.parse(rawArgs);

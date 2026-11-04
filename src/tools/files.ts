@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { textContent, buildPath } from './_shared.js';
+import { textContent, buildPath, schoolMeta } from './_shared.js';
 
 const listArgs = z.object({
   courseId: z.string(),
@@ -19,6 +19,7 @@ export function registerFileTools(server: McpServer, client: CanvasClient): void
   server.registerTool('canvas_list_course_files', {
     description: "List a course's files (metadata only — use canvas_download_file with the `url` field).",
     annotations: { readOnlyHint: true, openWorldHint: true },
+    _meta: schoolMeta('lookup'),
     inputSchema: listArgs,
   }, async (rawArgs) => {
     const args = listArgs.parse(rawArgs);
@@ -33,6 +34,7 @@ export function registerFileTools(server: McpServer, client: CanvasClient): void
   server.registerTool('canvas_download_file', {
     description: "Download a Canvas file to disk. `url` is the absolute URL from canvas_list_course_files (only file URLs on the configured Canvas host are accepted); `destinationPath` is required and must be inside the download directory (CANVAS_OUTPUT_DIR, default ~/Downloads).",
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    _meta: schoolMeta('other'),
     inputSchema: downloadArgs,
   }, async (rawArgs) => {
     const args = downloadArgs.parse(rawArgs);

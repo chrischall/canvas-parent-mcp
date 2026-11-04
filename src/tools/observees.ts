@@ -29,7 +29,12 @@ export function registerObserveeTools(server: McpServer, client: CanvasClient): 
 export interface ObserveeDirectory {
   /** One label per observee, in Canvas's order; never empty. */
   labels: string[];
-  /** A label (any case, trimmed) or an observee id → that observee's id. Throws naming the labels otherwise. */
+  /**
+   * A label (any case, trimmed) → that observee's id. A Canvas user reference
+   * (`self`, a numeric id, `sis_user_id:…` and the other `prefix:value` forms)
+   * passes through unchanged, so a child linked after start is still reachable.
+   * Anything else is refused, naming the labels.
+   */
   resolve(value: string): string;
 }
 
@@ -52,6 +57,13 @@ function readObservees(data: unknown): ObserveeUser[] {
   return out;
 }
 
+/**
+ * The shapes Canvas accepts in `/users/:id`: `self`, a numeric id, or a
+ * `sis_user_id:`/`sis_login_id:`/`lti_user_id:`-style prefixed id. A child's
+ * display name never looks like one, so a misspelt label is still refused.
+ */
+const CANVAS_USER_REF = /^(self|\d+|[a-z0-9_]+:.+)$/i;
+
 function buildDirectory(users: ObserveeUser[]): ObserveeDirectory | null {
   if (users.length === 0) return null;
   const counts = new Map<string, number>();
@@ -68,9 +80,10 @@ function buildDirectory(users: ObserveeUser[]): ObserveeDirectory | null {
   return {
     labels,
     resolve(value: string): string {
-      const id = byLabel.get(value.trim().toLowerCase());
+      const ref = value.trim();
+      const id = byLabel.get(ref.toLowerCase());
       if (id !== undefined) return id;
-      if (ids.has(value.trim())) return value.trim();
+      if (ids.has(ref) || CANVAS_USER_REF.test(ref)) return ref;
       throw new Error(`Unknown observee "${value}". Known: ${labels.join(', ')}.`);
     },
   };

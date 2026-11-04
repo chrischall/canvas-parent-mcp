@@ -76,6 +76,15 @@ describe('loadObserveeDirectory', () => {
     expect(() => dir.resolve('Adda')).toThrow(/Unknown observee "Adda"\. Known: Ada Lovelace\./);
   });
 
+  it('passes a Canvas user reference it does not know through unchanged: self, an id linked after start, a sis_user_id: id', async () => {
+    const { client } = clientReturning(async () => [{ id: 101, name: 'Ada Lovelace' }]);
+    const dir = (await loadObserveeDirectory(client))!;
+    expect(dir.resolve('self')).toBe('self');
+    expect(dir.resolve(' 4242 ')).toBe('4242');
+    expect(dir.resolve('sis_user_id:abc-1')).toBe('sis_user_id:abc-1');
+    expect(dir.resolve('lti_user_id:7f3')).toBe('lti_user_id:7f3');
+  });
+
   it('answers null when the account observes nobody (an empty enum is invalid JSON Schema)', async () => {
     const { client } = clientReturning(async () => []);
     expect(await loadObserveeDirectory(client)).toBeNull();

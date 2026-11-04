@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.11...v2.2.0) (2026-11-04)
+
+
+### Features
+
+* context-group hints, observee labels and a brief planner view ([#268](https://github.com/chrischall/canvas-parent-mcp/issues/268)) ([d81e56c](https://github.com/chrischall/canvas-parent-mcp/commit/d81e56c2ca08cc459a4c52322c226b9e206560d9))
+
 ## [2.1.11](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.10...v2.1.11) (2026-11-03)
 
 

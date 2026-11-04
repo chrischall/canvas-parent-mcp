@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/chrischall/canvas-parent-mcp/compare/v2.2.0...v2.2.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **planner:** pass self and unlisted Canvas user ids through observeeId again ([#271](https://github.com/chrischall/canvas-parent-mcp/issues/271)) ([9c55259](https://github.com/chrischall/canvas-parent-mcp/commit/9c55259ec43a6c5638f091520b6b0d0d3d8b823e))
+
 ## [2.2.0](https://github.com/chrischall/canvas-parent-mcp/compare/v2.1.11...v2.2.0) (2026-11-04)
 
 

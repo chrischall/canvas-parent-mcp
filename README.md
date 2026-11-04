@@ -31,7 +31,7 @@ Tools that the harness will gate as write/IO operations: `canvas_download_file`.
 
 ### Planner: child names and a brief view
 
-`canvas_list_planner_items` takes a child by name. At start the server lists your observees once (bounded to 5 s) and publishes their display names as the `observeeId` enum; the tool accepts either a name (any case) or a Canvas user id, and an unknown name is refused with the list of known ones. If the listing fails or you observe nobody, `observeeId` is published as a plain string and ids pass through as before. Two children with the same display name are listed as `Name (id)`.
+`canvas_list_planner_items` takes a child by name. At start the server lists your observees once (bounded to 5 s) and publishes their display names as the `observeeId` enum; the tool accepts either a name (any case) or a Canvas user id (`self`, a numeric id, or a `sis_user_id:`-style reference — including a child linked after the server started), and an unknown name is refused with the list of known ones. If the listing fails or you observe nobody, `observeeId` is published as a plain string and ids pass through as before. Two children with the same display name are listed as `Name (id)`.
 
 `view: "brief"` returns one line per planner item, at most 120 characters: `title — due <ISO date or "no date"> — <submitted|not submitted|missing>`. Items with nothing to submit (planner notes, pages, events) carry no status. The default (`view: "full"`) is Canvas's payload, unchanged.
 

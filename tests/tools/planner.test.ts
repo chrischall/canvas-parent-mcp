@@ -105,6 +105,15 @@ describe('observeeId as a label enum', () => {
     expect(pagSpy).not.toHaveBeenCalled();
   });
 
+  it('passes self, and an id the start-time listing did not have, straight to Canvas', async () => {
+    const dir = await directory([{ id: 101, name: 'Ada Lovelace' }]);
+    for (const ref of ['self', '4242', 'sis_user_id:abc']) {
+      const { handlers, pagSpy } = setup([], dir);
+      await handlers.get('canvas_list_planner_items')!({ observeeId: ref });
+      expect(pagSpy).toHaveBeenCalledWith(`/api/v1/users/${encodeURIComponent(ref)}/planner/items`);
+    }
+  });
+
   it('passes an id through unchanged when no observee list was available', async () => {
     const { handlers, pagSpy } = setup([], null);
     await handlers.get('canvas_list_planner_items')!({ observeeId: 'Ada' });

@@ -1,4 +1,13 @@
-import { minifiedResult, resolveView, stripMediaUrls, viewParam, type View } from '@chrischall/mcp-utils';
+import {
+  UNTRUSTED_CONTENT_RULE,
+  minifiedResult,
+  resolveView,
+  stripMediaUrls,
+  untrustedEnvelope,
+  viewParam,
+  type View,
+} from '@chrischall/mcp-utils';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 
 /**
  * The rungs this server honours (`@chrischall/mcp-utils`' `view` vocabulary;
@@ -101,4 +110,18 @@ const DROP = ['avatar_url', 'avatar_image_url'] as const;
 export function viewResponse(view: string | undefined, data: unknown): ReturnType<typeof minifiedResult> {
   const rung: View = resolveView(view, CV_VIEWS);
   return minifiedResult(rung === 'compact' ? stripMediaUrls(data, { keep: KEEP, drop: DROP }) : data);
+}
+
+/**
+ * Answer a `view: "brief"` read whose lines carry third-party text (a
+ * teacher-written assignment title): the lines as the untrusted-data
+ * envelope's `data` array — `{ untrusted_content: true, note, data: string[] }`,
+ * minified, markers first — so the marker precedes the text wherever the
+ * result is read. A host composing a group answer (mcp-host's intent tools)
+ * unwraps the envelope and takes `data` as the lines. An empty list is the
+ * caller's to turn into the `-- none` note.
+ */
+export function untrustedBriefResponse(lines: string[], whoWrote: string): CallToolResult {
+  const payload = untrustedEnvelope(lines, { note: `${whoWrote} ${UNTRUSTED_CONTENT_RULE}` });
+  return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
 }

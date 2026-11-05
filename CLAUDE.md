@@ -133,9 +133,13 @@ product is the URL. `tests/tools/view-wiring.test.ts` pins that set on both side
 and fails if a new tool is added without making the call.
 
 The planner is the one exception with a DIFFERENT view: `full | brief`, `full`
-by default and verbatim. `brief` is one line per item (`title — due <date> —
-<status>`, ≤ 120 chars) for mcp-host's context-group intent tools; it is not
-the avatar rung, and the wiring test lists it separately.
+by default and verbatim. `brief` is one line per item (`title — <ISO date|no
+date> — <status>`, ≤ 120 chars, cut whole, title first) for mcp-host's
+context-group intent tools, following the fleet brief contract: the lines ride
+in the untrusted-data envelope's `data` array (`untrustedBriefResponse` in
+`src/view.ts`), an empty list is exactly `["-- none"]`, and a title starting
+with `-- ` or `\` is escaped with one leading `\`. It is not the avatar rung,
+and the wiring test lists it separately.
 
 ### Context-group hints (`_meta.mint`)
 

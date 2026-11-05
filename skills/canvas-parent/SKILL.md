@@ -75,7 +75,7 @@ Precedence when multiple are set: `CANVAS_TOKEN` > username/password > OAuth > f
 ### Calendar & planner
 - `canvas_list_calendar_events` — calendar events / assignments
 - `canvas_list_upcoming_events` — server-curated next 7 days
-- `canvas_list_planner_items` — unified to-do feed
+- `canvas_list_planner_items(observeeId?, view?)` — unified to-do feed; `view: "brief"` gives one line per item, `title — <ISO date|no date> — <status>`, inside the untrusted-data envelope (`data: ["-- none"]` when empty)
 
 ### Communication
 - `canvas_list_announcements(contextCodes, view?)` — course announcements
@@ -125,12 +125,12 @@ That is also why there is deliberately **no `raw` rung**: there is no
 normalisation layer here for `full` to sit above, so `full` already IS the
 untouched upstream payload and a third value would silently alias it.
 
-The other ten tools take no `view`, for two different reasons:
+The other ten tools take no avatar `view`, for two different reasons:
 
 - **Nothing to strip.** `canvas_list_courses`, `canvas_list_assignments`,
   `canvas_list_missing_submissions`, `canvas_list_enrollments`,
   `canvas_list_calendar_events`, `canvas_list_upcoming_events` and
-  `canvas_list_planner_items` embed no user object — a live
+  `canvas_list_planner_items` (whose `view` is `full | brief` instead) embed no user object — a live
   `canvas_list_courses` over twelve courses carried no media field of any kind
   — and a knob that does not turn is worse than no knob. `canvas_healthcheck`
   returns a verdict, not a record.

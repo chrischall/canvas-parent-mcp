@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.2](https://github.com/chrischall/canvas-parent-mcp/compare/v2.2.1...v2.2.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **brief:** planner brief lines ride the untrusted envelope and an empty list is a note ([#273](https://github.com/chrischall/canvas-parent-mcp/issues/273)) ([1542979](https://github.com/chrischall/canvas-parent-mcp/commit/154297976f7496c71041dcef0e3e18da7bed501a))
+
 ## [2.2.1](https://github.com/chrischall/canvas-parent-mcp/compare/v2.2.0...v2.2.1) (2026-11-04)
 
 

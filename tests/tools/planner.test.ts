@@ -134,22 +134,40 @@ describe('view: brief', () => {
     { plannable_type: 'wiki_page', plannable: { title: 'Reading' }, submissions: false },
   ];
 
-  it('returns one line per item: title — due <date> — <status>', async () => {
+  /** The brief answer is the untrusted-data envelope, minified, markers first. */
+  function briefLines(text: string): string[] {
+    expect(text.startsWith('{"untrusted_content":true,"note":')).toBe(true);
+    const parsed = JSON.parse(text) as { untrusted_content: boolean; note: string; data: string[] };
+    expect(parsed.note).toMatch(/teachers/);
+    expect(text).toBe(JSON.stringify(parsed));
+    return parsed.data;
+  }
+
+  it('returns one line per item, title — <ISO date|no date> — <status>, in the untrusted envelope', async () => {
     const { handlers } = setup(ITEMS);
     const result = await handlers.get('canvas_list_planner_items')!({ view: 'brief' });
-    expect(result.content[0].text.split('\n')).toEqual([
-      'Essay — due 2026-11-05T23:59:00Z — submitted',
-      'Quiz 3 — due 2026-11-06T15:00:00Z — not submitted',
-      'Lab report — due 2026-11-01T23:59:00Z — missing',
-      'Bring cones — due 2026-11-07T00:00:00Z',
-      'Reading — due no date',
+    expect(result.content).toHaveLength(1);
+    expect(briefLines(result.content[0].text)).toEqual([
+      'Essay — 2026-11-05T23:59:00Z — submitted',
+      'Quiz 3 — 2026-11-06T15:00:00Z — not submitted',
+      'Lab report — 2026-11-01T23:59:00Z — missing',
+      'Bring cones — 2026-11-07T00:00:00Z — planner note',
+      'Reading — no date — wiki page',
     ]);
   });
 
-  it('answers an empty planner with an empty text', async () => {
+  it('answers an empty planner with exactly the "-- none" note', async () => {
     const { handlers } = setup([]);
     const result = await handlers.get('canvas_list_planner_items')!({ view: 'brief' });
-    expect(result.content[0].text).toBe('');
+    expect(briefLines(result.content[0].text)).toEqual(['-- none']);
+  });
+
+  it('a teacher-written title that looks like a note stays an item, escaped', async () => {
+    const { handlers } = setup([
+      { plannable_type: 'assignment', plannable: { title: '-- none' }, submissions: { submitted: false } },
+    ]);
+    const result = await handlers.get('canvas_list_planner_items')!({ view: 'brief' });
+    expect(briefLines(result.content[0].text)).toEqual(['\\-- none — no date — not submitted']);
   });
 
   it('view: full is the default payload', async () => {
@@ -162,11 +180,25 @@ describe('view: brief', () => {
     const line = briefLine({ plannable: { title: 'x'.repeat(200), due_at: '2026-11-05T23:59:00Z' },
       submissions: { submitted: false, missing: true } });
     expect(line.length).toBeLessThanOrEqual(120);
-    expect(line).toMatch(/^x+… — due 2026-11-05T23:59:00Z — missing$/);
+    expect(line).toMatch(/^x+… — 2026-11-05T23:59:00Z — missing$/);
+  });
+
+  it('cuts the WHOLE line to 120, title first, even when the tail alone overflows', () => {
+    const line = briefLine({ plannable_type: 'y'.repeat(150), plannable: { title: 'x'.repeat(200) }, submissions: false });
+    expect(line.length).toBeLessThanOrEqual(120);
+    expect(line.startsWith('x')).toBe(true);
+  });
+
+  it('escapes a title starting with "-- " or "\\" and leaves others alone', () => {
+    const sub = { submitted: true };
+    expect(briefLine({ plannable: { title: '-- 3 of 9 shown' }, submissions: sub }))
+      .toBe('\\-- 3 of 9 shown — no date — submitted');
+    expect(briefLine({ plannable: { title: '\\x' }, submissions: sub })).toBe('\\\\x — no date — submitted');
+    expect(briefLine({ plannable: { title: '--dash' }, submissions: sub })).toBe('--dash — no date — submitted');
   });
 
   it('survives an item with no plannable at all', () => {
-    expect(briefLine({ title: 'Loose' })).toBe('Loose — due no date');
-    expect(briefLine(null)).toBe('(untitled) — due no date');
+    expect(briefLine({ title: 'Loose' })).toBe('Loose — no date — nothing to submit');
+    expect(briefLine(null)).toBe('(untitled) — no date — nothing to submit');
   });
 });

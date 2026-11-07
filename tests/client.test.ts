@@ -7,6 +7,7 @@ import {
   InvalidPathError, ParentDirectoryMissingError, FileExistsError,
   DownloadUrlRejectedError, DownloadDestinationRejectedError, DownloadTooLargeError,
   parseLinkHeader, DOWNLOAD_TIMEOUT_MS, MAX_DOWNLOAD_BYTES, PaginationOriginError,
+  MAX_FETCH_FILE_BYTES,
 } from '../src/client.js';
 import { withCallSignal } from '@chrischall/mcp-utils';
 import type { Account } from '../src/config.js';
@@ -1034,5 +1035,130 @@ describe('CanvasClient — timeouts, cancellation and streamed downloads (fleet-
 
   it('defaults the cap to 1 GiB', () => {
     expect(MAX_DOWNLOAD_BYTES).toBe(1024 ** 3);
+  });
+});
+
+describe('CanvasClient.fetchFile (in-memory, for hosted delivery)', () => {
+  it('returns the bytes, the content type and the Content-Disposition filename', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="Unit 3 Notes.pdf"' },
+    }));
+    const c = new CanvasClient(tokenAccount);
+    const f = await c.fetchFile('https://cms.instructure.com/files/1/download');
+    expect([...f.bytes]).toEqual([1, 2, 3]);
+    expect(f.contentType).toBe('application/pdf');
+    expect(f.fileName).toBe('Unit 3 Notes.pdf');
+  });
+
+  it("prefers RFC 5987 filename* over filename", async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1]), {
+      status: 200,
+      headers: { 'content-disposition': "attachment; filename=\"x.pdf\"; filename*=UTF-8''r%C3%A9sum%C3%A9.pdf" },
+    }));
+    const f = await new CanvasClient(tokenAccount).fetchFile('https://cms.instructure.com/files/1/download');
+    expect(f.fileName).toBe('résumé.pdf');
+    expect(f.contentType).toBe('application/octet-stream');
+  });
+
+  it('keeps a filename* that is not valid percent-encoding as written', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1]), {
+      status: 200, headers: { 'content-disposition': "attachment; filename*=UTF-8''bad%E0.pdf" },
+    }));
+    const f = await new CanvasClient(tokenAccount).fetchFile('https://cms.instructure.com/files/1/download');
+    expect(f.fileName).toBe('bad%E0.pdf');
+  });
+
+  it('strips any directory part from the advertised filename', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1]), {
+      status: 200, headers: { 'content-disposition': 'attachment; filename="../../etc/notes.txt"' },
+    }));
+    const f = await new CanvasClient(tokenAccount).fetchFile('https://cms.instructure.com/files/1/download');
+    expect(f.fileName).toBe('notes.txt');
+  });
+
+  it('falls back to canvas-file-<id> when Canvas names no file', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));
+    const f = await new CanvasClient(tokenAccount).fetchFile('https://cms.instructure.com/courses/5/files/77/download');
+    expect(f.fileName).toBe('canvas-file-77');
+  });
+
+  it.each([
+    ['an unquoted filename', 'attachment; filename=worksheet.docx', 'worksheet.docx'],
+    ['a disposition with no filename', 'inline', 'canvas-file-8'],
+  ])('reads %s', async (_label, header, expected) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1]), {
+      status: 200, headers: { 'content-disposition': header },
+    }));
+    const f = await new CanvasClient(tokenAccount).fetchFile('https://cms.instructure.com/files/8/download');
+    expect(f.fileName).toBe(expected);
+  });
+
+  it('falls back when the disposition names an empty file', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1]), {
+      status: 200, headers: { 'content-disposition': 'attachment; filename=""' },
+    }));
+    const f = await new CanvasClient(tokenAccount).fetchFile('https://cms.instructure.com/files/8/download');
+    expect(f.fileName).toBe('canvas-file-8');
+  });
+
+  it('reads an empty body as zero bytes', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const f = await new CanvasClient(tokenAccount).fetchFile('https://cms.instructure.com/files/8/download');
+    expect(f.bytes.length).toBe(0);
+  });
+
+  it('is capped at the blob store object limit (100 MiB) by default', () => {
+    expect(MAX_FETCH_FILE_BYTES).toBe(100 * 1024 * 1024);
+  });
+
+  it('refuses a declared oversize body before reading it', async () => {
+    let pulled = false;
+    const body = new ReadableStream<Uint8Array>(
+      { pull: (ctl) => { pulled = true; ctl.enqueue(new Uint8Array(11)); } },
+      { highWaterMark: 0 },
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(body, {
+      status: 200, headers: { 'content-length': '11' },
+    }));
+    const c = new CanvasClient(tokenAccount, { maxDownloadBytes: 10 });
+    await expect(c.fetchFile('https://cms.instructure.com/files/1/download')).rejects.toBeInstanceOf(DownloadTooLargeError);
+    expect(pulled).toBe(false);
+  });
+
+  it('refuses a body that overruns the cap mid-stream', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array(11), { status: 200 }));
+    const c = new CanvasClient(tokenAccount);
+    await expect(c.fetchFile('https://cms.instructure.com/files/1/download', { maxBytes: 10 }))
+      .rejects.toBeInstanceOf(DownloadTooLargeError);
+  });
+
+  it('never raises the cap above the client maxDownloadBytes', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array(6), { status: 200 }));
+    const c = new CanvasClient(tokenAccount, { maxDownloadBytes: 5 });
+    await expect(c.fetchFile('https://cms.instructure.com/files/1/download', { maxBytes: 50 }))
+      .rejects.toThrow('5 bytes');
+  });
+
+  it('pins the URL to the Canvas origin before any fetch', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const c = new CanvasClient(tokenAccount);
+    await expect(c.fetchFile('https://evil.example/files/1/download')).rejects.toBeInstanceOf(DownloadUrlRejectedError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('maps a 404 without leaking the verifier', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('nope', { status: 404 }));
+    const c = new CanvasClient(tokenAccount);
+    const err = await c.fetchFile('https://cms.instructure.com/files/9/download?verifier=SECRETV').catch((e) => e);
+    expect((err as Error).message).toContain('Canvas download 404');
+    expect((err as Error).message).not.toContain('SECRETV');
+  });
+
+  it('gives the transfer the download timeout, not the 30s API one', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));
+    await new CanvasClient(tokenAccount).fetchFile('https://cms.instructure.com/files/1/download');
+    expect(timeoutSpy).toHaveBeenCalledWith(DOWNLOAD_TIMEOUT_MS);
   });
 });

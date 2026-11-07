@@ -85,7 +85,7 @@ Precedence when multiple are set: `CANVAS_TOKEN` > username/password > OAuth > f
 
 ### Files
 - `canvas_list_course_files(courseId)` — file metadata
-- `canvas_download_file(url, destinationPath)` — download a file to disk. `url` must be a `/files/` URL on the configured Canvas host; `destinationPath` must be inside `CANVAS_OUTPUT_DIR` (default `~/Downloads`), and a relative path is resolved against it
+- `canvas_download_file(url, destinationPath?)` — download a file. `url` must be a `/files/` URL on the configured Canvas host. Local install: written to disk; `destinationPath` must be inside `CANVAS_OUTPUT_DIR` (default `~/Downloads`, a relative path is resolved against it), or omit it to save under the file's own name. Hosted: returns a signed, expiring `url` (give it to the user) or, for a small image, the image inline; `destinationPath` is ignored
 
 ## Response shape (`view`)
 

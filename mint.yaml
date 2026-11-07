@@ -90,6 +90,11 @@ egress:
     # that host, and qr-login.ts is the separate canvas-parent-mcp-qr-login
     # bin, not the child this manifest configures. The fetchproxy fallback
     # lifts cookies through the browser bridge, which is not a dial either.
+    #
+    # Not listed: mcp-host's own blob store (MCP_BLOB_BASE_URL, the gateway
+    # serving this connector; its host differs per deployment).
+    # canvas_download_file PUTs a hosted download there and returns a signed
+    # link. Signed requests only; no Canvas credential is ever sent.
     - "*.instructure.com"
     - cms.instructure.com
     - "*.inscloudgate.net"

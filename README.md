@@ -41,6 +41,8 @@ Every tool except `canvas_healthcheck` carries a `_meta.mint` hint for hosts tha
 
 `canvas_download_file` only fetches `/files/…` URLs on your `CANVAS_BASE_URL` host (https), so your Canvas credential is never sent anywhere else, and it only writes inside a download directory: `CANVAS_OUTPUT_DIR` if set, otherwise `~/Downloads`. A relative `destinationPath` is resolved against that directory. It never writes through a symlink at the destination, and new files are created owner-only (0600).
 
+On a **hosted** deployment (mcp-host) the server's disk is not reachable from your session, so `canvas_download_file` writes nothing to disk: it reads the file (up to 100 MiB) and returns a signed download link that expires after an hour. An image under 10 MiB is shown inline instead. `destinationPath` is ignored there. A hosted server without a blob store returns files up to 10 MiB inline and refuses larger ones. On a local install, `destinationPath` is now optional; leave it out and the file is saved under its own name in the download directory, never overwriting an existing file.
+
 ## Configuration
 
 Set `CANVAS_BASE_URL` plus one of four auth modes. `canvas-parent-mcp` tries them in priority order:
@@ -132,6 +134,16 @@ If your Canvas admin has disabled personal-access-token creation (some instituti
    It hits Canvas's public `mobile_verify.json` endpoint to fetch the mobile client_id/client_secret, exchanges the QR's one-time code for an access+refresh token pair, and prints `CANVAS_BASE_URL` / `CANVAS_CLIENT_ID` / `CANVAS_CLIENT_SECRET` / `CANVAS_REFRESH_TOKEN` to stdout. The refresh token is sensitive — treat it like a password.
 
 This reuses the same SSO + OAuth endpoints the official Canvas Student/Parent apps use; from Canvas's perspective the resulting session looks like a mobile-app session. Use it only against accounts you legitimately control.
+
+## Upgrading
+
+### next release
+
+`canvas_download_file` now works on hosted deployments:
+
+- `destinationPath` is optional (it was required). Local calls that pass it behave exactly as before and return the same `{path, bytes, contentType}`.
+- Calls without `destinationPath`, and every call on a hosted server, return a delivery result instead: `{via, fileName, mimeType, url?, expiresAt?, path?, bytes, contentType, note?}`. `via` is `image` (inline image block), `resource` (inline bytes), `link` (signed `url` valid until `expiresAt`) or `disk` (`path`). An inline image or resource is returned as a content block before that JSON.
+- On a hosted server `destinationPath` is ignored and the `note` says so.
 
 ## Status
 

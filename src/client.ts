@@ -7,6 +7,7 @@ import {
   assertPathWithinRoots, createOAuth2Refresher, detectEdgeBlock, EdgeBlockedError, expandPath, parseLinkHeader, readEnvVar,
 } from '@chrischall/mcp-utils';
 import { CookieSessionManager } from '@chrischall/mcp-utils/session';
+import { BLOB_MAX_OBJECT_BYTES } from '@chrischall/mcp-utils/export';
 import type { Account, OAuthAccount, SessionAccount } from './config.js';
 import { sessionLogin as defaultSessionLogin, withBodyPreview } from './session-login.js';
 import { requestSignal } from './signal.js';
@@ -42,6 +43,12 @@ const DEFAULT_MAX_PAGES = 50;
 export const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
 /** Largest file canvas_download_file writes. The body is streamed, so this bounds disk, not memory. */
 export const MAX_DOWNLOAD_BYTES = 1024 ** 3;
+/**
+ * Largest file {@link CanvasClient.fetchFile} reads into memory: the mcp-host
+ * blob store's per-object limit (100 MiB). A hosted download is buffered whole
+ * so it can be PUT to the store as a link, so this bounds memory as well.
+ */
+export const MAX_FETCH_FILE_BYTES = BLOB_MAX_OBJECT_BYTES;
 
 /**
  * The session shape the {@link CookieSessionManager} mints and replays for us.
@@ -197,19 +204,7 @@ export class CanvasClient {
     const parent = dirname(dest);
     try { await stat(parent); } catch { throw new ParentDirectoryMissingError(parent); }
 
-    const res = await this.authedFetch(url, {}, DOWNLOAD_TIMEOUT_MS);
-    await throwIfEdgeBlocked(res, 'GET', path);
-    if (res.status === 401) throw this.expiredError();
-    // A file URL's `verifier` query param is a bearer-like capability for that
-    // file; keep it out of an error the model and transcript will see.
-    if (res.status === 404) throw new Error(`Canvas download 404 for ${redactPath(path)}`);
-    if (!res.ok) throw new Error(`Canvas download ${res.status} for ${redactPath(path)}`);
-
-    // Refuse a declared oversize body before creating the file at all.
-    if (Number(res.headers.get('content-length')) > this.maxDownloadBytes) {
-      await res.body?.cancel();
-      throw new DownloadTooLargeError(this.maxDownloadBytes);
-    }
+    const res = await this.openDownload(url, path, this.maxDownloadBytes);
     const bytes = await writeConfined(
       dest, destinationPath, res.body, opts.overwrite === true, this.maxDownloadBytes,
     );
@@ -221,11 +216,65 @@ export class CanvasClient {
   }
 
   /**
+   * Fetch a Canvas file into memory, for delivery to a caller that shares no
+   * filesystem with this server (hosted): the bytes go to the blob store as a
+   * signed link, or inline when small. The URL is pinned exactly as
+   * {@link download} pins it, the transfer gets {@link DOWNLOAD_TIMEOUT_MS},
+   * and the body is capped at `maxBytes` (default {@link MAX_FETCH_FILE_BYTES},
+   * never above the client's `maxDownloadBytes`) — a declared oversize body is
+   * refused before it is read.
+   */
+  async fetchFile(
+    path: string, opts: { maxBytes?: number } = {},
+  ): Promise<{ bytes: Uint8Array; contentType: string; fileName: string }> {
+    const url = this.pinDownloadUrl(path);
+    const cap = Math.min(opts.maxBytes ?? MAX_FETCH_FILE_BYTES, this.maxDownloadBytes);
+    const res = await this.openDownload(url, path, cap);
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    if (res.body) {
+      for await (const chunk of res.body) {
+        total += chunk.byteLength;
+        if (total > cap) throw new DownloadTooLargeError(cap);
+        chunks.push(chunk);
+      }
+    }
+    const bytes = new Uint8Array(total);
+    let at = 0;
+    for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.byteLength; }
+    return {
+      bytes,
+      contentType: res.headers.get('content-type') ?? 'application/octet-stream',
+      fileName: dispositionFileName(res.headers.get('content-disposition')) ?? fallbackFileName(url),
+    };
+  }
+
+  /**
+   * GET a pinned file URL with the download timeout and map a failure. Shared
+   * by {@link download} and {@link fetchFile}; a declared Content-Length over
+   * `maxBytes` is refused before the body is read.
+   */
+  private async openDownload(url: string, path: string, maxBytes: number): Promise<Response> {
+    const res = await this.authedFetch(url, {}, DOWNLOAD_TIMEOUT_MS);
+    await throwIfEdgeBlocked(res, 'GET', path);
+    if (res.status === 401) throw this.expiredError();
+    // A file URL's `verifier` query param is a bearer-like capability for that
+    // file; keep it out of an error the model and transcript will see.
+    if (res.status === 404) throw new Error(`Canvas download 404 for ${redactPath(path)}`);
+    if (!res.ok) throw new Error(`Canvas download ${res.status} for ${redactPath(path)}`);
+    if (Number(res.headers.get('content-length')) > maxBytes) {
+      await res.body?.cancel();
+      throw new DownloadTooLargeError(maxBytes);
+    }
+    return res;
+  }
+
+  /**
    * The directory downloads are confined to: the constructor's `outputDir`,
    * else `CANVAS_OUTPUT_DIR`, else `~/Downloads`. Read per call so an env
    * change needs no client rebuild.
    */
-  private downloadRoot(): string {
+  downloadRoot(): string {
     return expandPath(this.outputDir ?? readEnvVar('CANVAS_OUTPUT_DIR') ?? join(homedir(), 'Downloads'));
   }
 
@@ -404,6 +453,30 @@ export class CanvasClient {
       accessTokenExpiresAt: Date.now() + (expiresIn - 60) * 1000,
     };
   }
+}
+
+/**
+ * The filename a Content-Disposition header advertises — RFC 5987 `filename*`
+ * first, then `filename` — reduced to its last path segment (the name is
+ * upstream-controlled and only ever used as a display/key name, never a path).
+ */
+function dispositionFileName(header: string | null): string | undefined {
+  if (!header) return undefined;
+  let name: string | undefined;
+  const star = /filename\*\s*=\s*[^']*'[^']*'([^;]+)/i.exec(header);
+  if (star) {
+    try { name = decodeURIComponent(star[1].trim()); } catch { name = star[1].trim(); }
+  } else {
+    const plain = /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i.exec(header);
+    name = (plain?.[1] ?? plain?.[2])?.trim();
+  }
+  const base = name?.split(/[\\/]/).pop();
+  return base ? base : undefined;
+}
+
+/** `canvas-file-<id>` from a `/files/<id>` URL, for a response that names no file. */
+function fallbackFileName(url: string): string {
+  return `canvas-file-${/\/files\/([^/?#]+)/.exec(new URL(url).pathname)![1]}`;
 }
 
 /** Strip Canvas's `while(1);` XSSI prefix and JSON-parse. Returns null for empty body. */

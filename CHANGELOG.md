@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.3](https://github.com/chrischall/canvas-parent-mcp/compare/v2.2.2...v2.2.3) (2026-11-07)
+
+
+### Bug Fixes
+
+* **deps:** upgrade @chrischall/mcp-utils to 3.7.2 so uploads carry only the file's bytes ([#279](https://github.com/chrischall/canvas-parent-mcp/issues/279)) ([43ff11b](https://github.com/chrischall/canvas-parent-mcp/commit/43ff11bdc9dc8bab3a56b0e39189da8d7600cfd1))
+* **files:** return canvas_download_file as a download link on hosted servers ([#276](https://github.com/chrischall/canvas-parent-mcp/issues/276)) ([8601e08](https://github.com/chrischall/canvas-parent-mcp/commit/8601e08f3ba7cb242779046f39e9c524f44536c6))
+
 ## [2.2.2](https://github.com/chrischall/canvas-parent-mcp/compare/v2.2.1...v2.2.2) (2026-11-05)
 
 

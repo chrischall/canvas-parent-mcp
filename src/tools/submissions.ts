@@ -8,14 +8,14 @@ const getArgs = z.object({
   courseId: z.string(),
   assignmentId: z.string(),
   userId: z.string().optional().describe("'self' or a numeric Canvas user ID. Defaults to 'self'."),
-  view: viewArg(),
+  view: viewArg({ html: true }),
 });
 
 const recentArgs = z.object({
   courseId: z.string(),
   studentId: z.string().optional().describe("'self' or a numeric Canvas user ID. Defaults to 'self'."),
   since: z.string().optional().describe('ISO 8601 timestamp; defaults to 14 days ago.'),
-  view: viewArg(),
+  view: viewArg({ html: true }),
 });
 
 export function registerSubmissionTools(server: McpServer, client: CanvasClient): void {
@@ -32,7 +32,7 @@ export function registerSubmissionTools(server: McpServer, client: CanvasClient)
       { 'include[]': ['submission_comments', 'rubric_assessment', 'assignment'] },
     );
     const data = await client.request(path);
-    return viewResponse(args.view, data);
+    return viewResponse(args.view, data, { html: true });
   });
 
   server.registerTool('canvas_list_recent_submissions', {
@@ -51,6 +51,6 @@ export function registerSubmissionTools(server: McpServer, client: CanvasClient)
       'include[]': ['assignment', 'submission_comments'],
     });
     const data = await client.requestPaginated(path);
-    return viewResponse(args.view, data);
+    return viewResponse(args.view, data, { html: true });
   });
 }

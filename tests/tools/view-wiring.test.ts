@@ -26,7 +26,10 @@ const AVATARS = {
   avatar_url: 'https://cms.instructure.com/images/thumbnails/1/MVccGAaJXYRhHy4rIGaKBbKGeht3umUwFgXObNVu',
   author: { id: '8507', display_name: 'Sallie Davis', avatar_image_url: 'https://cms.instructure.com/images/thumbnails/2/abc' },
 };
-const PAYLOAD = { id: '1', name: 'a thing', ...AVATARS };
+/** Canvas rich-content HTML, under the keys it uses for it. */
+const HTML = '<p><span style="color: red;">Read <strong>chapter 4</strong></span></p>';
+const MD = 'Read **chapter 4**';
+const PAYLOAD = { id: '1', name: 'a thing', ...AVATARS, message: HTML, description: HTML, syllabus_body: HTML, body: HTML };
 
 /**
  * Register every tool this server has, capturing each one's schema and handler.
@@ -61,8 +64,8 @@ function setupAll() {
 afterEach(() => vi.restoreAllMocks());
 
 /**
- * The tools whose Canvas payload embeds a user object — the only thing Canvas
- * hangs an avatar on.
+ * The tools whose Canvas payload embeds a user object (the only thing Canvas
+ * hangs an avatar on) or teacher-written HTML.
  */
 const WIRED: Array<[string, Record<string, unknown>]> = [
   ['canvas_get_profile', {}],
@@ -74,6 +77,28 @@ const WIRED: Array<[string, Record<string, unknown>]> = [
   ['canvas_list_conversations', {}],
   ['canvas_get_conversation', { id: '1' }],
   ['canvas_list_discussion_topics', { courseId: '1' }],
+  ['canvas_list_assignments', { courseId: '1' }],
+  ['canvas_list_missing_submissions', {}],
+  ['canvas_list_calendar_events', {}],
+  ['canvas_list_upcoming_events', {}],
+];
+
+/**
+ * The wired tools whose payload carries Canvas rich-content HTML, which their
+ * compact rung reads as Markdown. The conversation tools are wired but NOT
+ * here: an inbox message's `body` is plain text, and reading it as HTML would
+ * collapse its newlines.
+ */
+const HTML_READS = [
+  'canvas_get_course',
+  'canvas_get_submission',
+  'canvas_list_recent_submissions',
+  'canvas_list_announcements',
+  'canvas_list_discussion_topics',
+  'canvas_list_assignments',
+  'canvas_list_missing_submissions',
+  'canvas_list_calendar_events',
+  'canvas_list_upcoming_events',
 ];
 
 /**
@@ -87,19 +112,15 @@ const BRIEF = ['canvas_list_planner_items'];
 /**
  * Left unwired on purpose, and this list is the assertion.
  *
- * The first six return no user object at all — a live `canvas_list_courses`
- * over twelve courses carried no media field of any kind — so a `view` there
- * would be a knob that does not turn, which is worse than no knob. The last two
- * are the opposite case: their PRODUCT is the URL, and stripping would empty
- * the response rather than shrink it.
+ * The first two return neither a user object nor teacher-written HTML — a live
+ * `canvas_list_courses` over twelve courses carried no media field of any kind
+ * — so a `view` there would be a knob that does not turn, which is worse than
+ * no knob. The last two are the opposite case: their PRODUCT is the URL, and
+ * stripping would empty the response rather than shrink it.
  */
 const UNWIRED = [
   'canvas_list_courses',
-  'canvas_list_assignments',
-  'canvas_list_missing_submissions',
   'canvas_list_enrollments',
-  'canvas_list_calendar_events',
-  'canvas_list_upcoming_events',
   'canvas_list_course_files',
   'canvas_download_file',
 ];
@@ -143,6 +164,31 @@ describe('every wired tool answers compact by default and full on request', () =
     const full = JSON.stringify(await handlers.get(name)!({ ...args, view: 'full' }));
     expect(full).toContain('avatar_url');
     expect(full).toContain('avatar_image_url');
+  });
+});
+
+describe('the HTML reads answer Markdown on compact and Canvas\'s HTML on full', () => {
+  it.each(HTML_READS)('%s', async (name) => {
+    const { handlers } = setupAll();
+    const args = Object.fromEntries(WIRED)[name]!;
+
+    const byDefault = JSON.parse((await handlers.get(name)!(args)).content[0].text);
+    const record = Array.isArray(byDefault) ? byDefault[0] : byDefault;
+    expect(record).toMatchObject({ message: MD, description: MD, syllabus_body: MD, body: MD });
+
+    const full = JSON.parse((await handlers.get(name)!({ ...args, view: 'full' })).content[0].text);
+    expect(Array.isArray(full) ? full[0] : full).toMatchObject({ message: HTML, description: HTML });
+  });
+
+  it.each(HTML_READS)('%s says so in its view description', (name) => {
+    const { schemas } = setupAll();
+    expect((schemas.get(name)?.view as z.ZodType).description).toMatch(/Markdown/);
+  });
+
+  it.each(WIRED.map(([n]) => n).filter((n) => !HTML_READS.includes(n)))('%s leaves bodies as Canvas sent them', async (name) => {
+    const { handlers } = setupAll();
+    const args = Object.fromEntries(WIRED)[name]!;
+    expect((await handlers.get(name)!(args)).content[0].text).toContain('<strong>');
   });
 });
 

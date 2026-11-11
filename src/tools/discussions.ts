@@ -8,7 +8,7 @@ const argsSchema = z.object({
   courseId: z.string(),
   onlyAnnouncements: z.boolean().optional(),
   orderBy: z.enum(['position', 'recent_activity', 'title']).optional(),
-  view: viewArg(),
+  view: viewArg({ html: true }),
 });
 
 export function registerDiscussionTools(server: McpServer, client: CanvasClient): void {
@@ -24,6 +24,6 @@ export function registerDiscussionTools(server: McpServer, client: CanvasClient)
       order_by: args.orderBy,
     });
     const data = await client.requestPaginated(path);
-    return viewResponse(args.view, data);
+    return viewResponse(args.view, data, { html: true });
   });
 }

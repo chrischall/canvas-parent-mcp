@@ -32,7 +32,7 @@ src/
   qr-login.ts         # Mobile QR → mobile_verify.json → authorization_code exchange → OAuth tokens (bootstraps path 2)
   qr-login-cli.ts     # Thin CLI wrapper around qr-login (printed as env vars)
   signal.ts           # requestSignal(): 30s timeout + the tool call's cancellation, on every outbound fetch (API, download, login, QR, OAuth)
-  view.ts             # CV_VIEWS/viewArg/viewResponse — the `view` rung (compact default, full opt-in). Wired ONLY into the reads whose Canvas payload embeds a user object; see its docblocks for the KEEP/DROP reasoning
+  view.ts             # CV_VIEWS/viewArg/viewResponse — the `view` rung (compact default, full opt-in). compact also reads Canvas HTML bodies as Markdown on the reads that opt in (`{ html: true }`); see its docblocks for the KEEP/DROP reasoning
   tools/
     _shared.ts        # textContent(), buildPath(), userSegment(), is404(), toArray()
     profile.ts        announcements.ts   calendar.ts        conversations.ts
@@ -114,23 +114,38 @@ Read tools that target a user accept an optional `observeeId`; when set, `userSe
 
 ### Response shape (`view`)
 
-Nine reads take `view: compact | full` (`src/view.ts`), compact by default. This
-server projects nothing — every tool hands back Canvas's payload verbatim — so
-compact does the one thing that needs no knowledge of the API: it removes avatar
-URLs. `full` returns Canvas untouched.
+Thirteen reads take `view: compact | full` (`src/view.ts`), compact by default.
+This server projects nothing — every tool hands back Canvas's payload verbatim —
+so compact does only what needs no field list: it removes avatar URLs, and on
+the reads that carry Canvas rich-content HTML it reads that HTML as Markdown.
+`full` returns Canvas untouched.
 
-**Only the reads whose payload embeds a Canvas USER object are wired**, because
-that is the only place Canvas hangs an avatar: `canvas_get_profile`,
-`canvas_list_observees`, `canvas_get_course` (its `teachers`),
-`canvas_get_submission` / `canvas_list_recent_submissions` (comment authors),
-`canvas_list_announcements`, `canvas_list_discussion_topics` (authors), and
-`canvas_list_conversations` / `canvas_get_conversation` (participants — both
-request `include[]=participant_avatars`). The rest take no avatar `view`: courses,
-assignments, missing submissions, enrollments, calendar, upcoming events and
-planner items carry no user object, and a parameter that changes nothing is worse
-than no parameter. The two file tools are excluded for the opposite reason — their
-product is the URL. `tests/tools/view-wiring.test.ts` pins that set on both sides,
-and fails if a new tool is added without making the call.
+**Avatars:** wired into the reads whose payload embeds a Canvas USER object, the
+only place Canvas hangs an avatar: `canvas_get_profile`, `canvas_list_observees`,
+`canvas_get_course` (its `teachers`), `canvas_get_submission` /
+`canvas_list_recent_submissions` (comment authors), `canvas_list_announcements`,
+`canvas_list_discussion_topics` (authors), and `canvas_list_conversations` /
+`canvas_get_conversation` (participants — both request
+`include[]=participant_avatars`).
+
+**HTML bodies:** the reads that pass `viewResponse(…, { html: true })` —
+announcements, discussions, `canvas_get_course` (`syllabus_body`), both
+submission reads (`body`, the included `assignment.description`), assignments,
+missing submissions, calendar and upcoming events — convert `message`,
+`description`, `syllabus_body`, `body`, `lock_explanation` and
+`long_description` at any depth with `@chrischall/mcp-utils/rich`'s
+`htmlToMarkdown`, and only when the value holds a tag (a rubric criterion's
+plain `description` is left byte for byte). The conversation tools do NOT opt
+in: an inbox message's `body` is plain text and reading it as HTML would
+collapse its newlines. An `element` hook (`READ` in `view.ts`) reads an
+`<iframe>` embed as a link to its http(s) `src` and drops Canvas's
+screen-reader "Links to an external site.".
+
+The rest take no `view`: courses, enrollments and planner items carry neither
+(the planner has its own `brief` view, below), and a parameter that changes
+nothing is worse than no parameter. The two file tools are excluded for the
+opposite reason — their product is the URL. `tests/tools/view-wiring.test.ts`
+pins both sets, and fails if a new tool is added without making the call.
 
 The planner is the one exception with a DIFFERENT view: `full | brief`, `full`
 by default and verbatim. `brief` is one line per item (`title — <ISO date|no

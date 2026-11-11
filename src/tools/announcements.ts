@@ -9,7 +9,7 @@ const argsSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   activeOnly: z.boolean().optional(),
-  view: viewArg(),
+  view: viewArg({ html: true }),
 });
 
 export function registerAnnouncementTools(server: McpServer, client: CanvasClient): void {
@@ -27,6 +27,6 @@ export function registerAnnouncementTools(server: McpServer, client: CanvasClien
       active_only: args.activeOnly ?? true,
     });
     const data = await client.requestPaginated(path);
-    return viewResponse(args.view, data);
+    return viewResponse(args.view, data, { html: true });
   });
 }

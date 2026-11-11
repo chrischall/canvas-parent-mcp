@@ -10,7 +10,7 @@ const listArgs = z.object({
 
 const getArgs = z.object({
   courseId: z.string(),
-  view: viewArg(),
+  view: viewArg({ html: true }),
 });
 
 export function registerCourseTools(server: McpServer, client: CanvasClient): void {
@@ -41,6 +41,6 @@ export function registerCourseTools(server: McpServer, client: CanvasClient): vo
       'include[]': ['syllabus_body', 'teachers', 'term'],
     });
     const data = await client.request(path);
-    return viewResponse(args.view, data);
+    return viewResponse(args.view, data, { html: true });
   });
 }

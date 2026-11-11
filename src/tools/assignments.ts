@@ -1,17 +1,20 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CanvasClient } from '../client.js';
-import { textContent, buildPath, userSegment, schoolMeta } from './_shared.js';
+import { buildPath, userSegment, schoolMeta } from './_shared.js';
+import { viewArg, viewResponse } from '../view.js';
 
 const listArgs = z.object({
   courseId: z.string(),
   bucket: z.enum(['past', 'overdue', 'undated', 'ungraded', 'unsubmitted', 'upcoming', 'future']).optional()
     .describe('Optional Canvas-side filter.'),
+  view: viewArg({ html: true }),
 });
 
 const missingArgs = z.object({
   observeeId: z.string().optional().describe("A linked observee's user id. When set, courseIds is required."),
   courseIds: z.array(z.string()).optional().describe('Required (non-empty) when observeeId is set; optional otherwise.'),
+  view: viewArg({ html: true }),
 });
 
 export function registerAssignmentTools(server: McpServer, client: CanvasClient): void {
@@ -28,7 +31,7 @@ export function registerAssignmentTools(server: McpServer, client: CanvasClient)
       order_by: 'due_at',
     });
     const data = await client.requestPaginated(path);
-    return textContent(data);
+    return viewResponse(args.view, data, { html: true });
   });
 
   server.registerTool('canvas_list_missing_submissions', {
@@ -49,6 +52,6 @@ export function registerAssignmentTools(server: McpServer, client: CanvasClient)
       'course_ids[]': args.courseIds,
     });
     const data = await client.requestPaginated(path);
-    return textContent(data);
+    return viewResponse(args.view, data, { html: true });
   });
 }

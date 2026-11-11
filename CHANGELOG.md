@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.3.0](https://github.com/chrischall/canvas-parent-mcp/compare/v2.2.3...v2.3.0) (2026-11-11)
+
+
+### Features
+
+* **view:** return teacher-written HTML as Markdown on the compact view ([#283](https://github.com/chrischall/canvas-parent-mcp/issues/283)) ([e87cc43](https://github.com/chrischall/canvas-parent-mcp/commit/e87cc434b39307c1f7911cd12e91aa3f1ca5b59e))
+
+
+### Bug Fixes
+
+* **planner:** include the whole last day when endDate is a date ([#281](https://github.com/chrischall/canvas-parent-mcp/issues/281)) ([b1b86d5](https://github.com/chrischall/canvas-parent-mcp/commit/b1b86d545281cb74d7487de2c38a8aa7a466c32a))
+
 ## [2.2.3](https://github.com/chrischall/canvas-parent-mcp/compare/v2.2.2...v2.2.3) (2026-11-07)
 
 

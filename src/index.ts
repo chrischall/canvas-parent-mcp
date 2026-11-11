@@ -64,7 +64,7 @@ const observees = client ? await loadObserveeDirectory(client) : null;
 // host's install-time `tools/list` succeeds.
 await runMcp({
   name: 'canvas',
-  version: '2.2.3', // x-release-please-version
+  version: '2.3.0', // x-release-please-version
   tools: [
     // Outside the `if (resolved)` on purpose: an unconfigured server must
     // still expose something that can say WHY (see the tool's docblock).

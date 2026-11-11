@@ -56,9 +56,51 @@ describe('canvas_list_planner_items', () => {
     const url = pagSpy.mock.calls[0][0] as string;
     expect(url).toContain('/api/v1/users/99/planner/items');
     expect(url).toContain('start_date=2026-01-01');
-    expect(url).toContain('end_date=2026-01-31');
+    expect(decodeURIComponent(url)).toContain('end_date=2026-01-31T23:59:59.999');
     expect(url).toContain('context_codes%5B%5D=course_1');
     expect(url).toContain('filter=new_activity');
+  });
+
+  // Canvas's planner reads a bare-date end_date as the START of that day
+  // (lib/planner_api_helper.rb formatted_planner_date, called without
+  // end_of_day: true), so a one-day window would return nothing. The tool's
+  // end is inclusive: a date-only end is sent as that day's last instant, with
+  // no offset so Canvas resolves it in the user's own time zone.
+  it('sends a date-only endDate as the end of that day, so the last day is included', async () => {
+    const { handlers, pagSpy } = setup();
+    await handlers.get('canvas_list_planner_items')!({ startDate: '2026-11-12', endDate: '2026-11-12' });
+    const params = new URL(pagSpy.mock.calls[0][0] as string, 'https://x').searchParams;
+    expect(params.get('start_date')).toBe('2026-11-12');
+    expect(params.get('end_date')).toBe('2026-11-12T23:59:59.999');
+  });
+
+  it('extends the other bare-date spellings Canvas accepts (YYYY/MM/DD, YYYY.MM.DD)', async () => {
+    const { handlers, pagSpy } = setup();
+    await handlers.get('canvas_list_planner_items')!({ endDate: '2026/11/12' });
+    await handlers.get('canvas_list_planner_items')!({ endDate: '2026.11.12' });
+    for (const call of pagSpy.mock.calls) {
+      expect(new URL(call[0] as string, 'https://x').searchParams.get('end_date')).toBe('2026-11-12T23:59:59.999');
+    }
+  });
+
+  it('passes a full ISO 8601 endDate through unchanged', async () => {
+    const { handlers, pagSpy } = setup();
+    for (const endDate of ['2026-11-12T10:00:00Z', '2026-11-12T10:00:00-05:00', '2026-11-12T10:00:00']) {
+      pagSpy.mockClear();
+      await handlers.get('canvas_list_planner_items')!({ endDate });
+      expect(new URL(pagSpy.mock.calls[0][0] as string, 'https://x').searchParams.get('end_date')).toBe(endDate);
+    }
+  });
+
+  it('documents the inclusive date range in the argument descriptions', async () => {
+    const h = await createTestHarness((server) => registerPlannerTools(server, {} as CanvasClient, null));
+    const { tools } = await h.client.listTools();
+    await h.close?.();
+    const props = (tools.find((t) => t.name === 'canvas_list_planner_items')!.inputSchema as {
+      properties: Record<string, { description?: string }>;
+    }).properties;
+    expect(props.endDate.description).toMatch(/inclusive/i);
+    expect(props.startDate.description).toMatch(/YYYY-MM-DD/);
   });
 
   it('returns the Canvas payload verbatim by default', async () => {

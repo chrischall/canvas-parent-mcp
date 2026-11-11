@@ -70,6 +70,25 @@ export function briefLine(item: unknown): string {
   return cut(`${shown}${tail}`, BRIEF_MAX);
 }
 
+/** The bare-date spellings Canvas's `Api::DATE_REGEX` accepts: `YYYY-MM-DD`, `YYYY/MM/DD`, `YYYY.MM.DD`, `YYYY MM DD`. */
+const BARE_DATE = /^(\d{4})[- /.](\d{2})[- /.](\d{2})$/;
+
+/**
+ * Make a date-only planner `end_date` inclusive. Canvas's planner parses a bare
+ * date as the START of that day (`formatted_planner_date` in
+ * `lib/planner_api_helper.rb`, called without `end_of_day: true` from
+ * `PlannerController#set_date_range`), so `start_date=end_date=<day>` returns
+ * nothing for that day. A bare date is sent as that day's last instant
+ * instead, with NO offset: Canvas's `ISO8601_REGEX` makes the zone optional
+ * and `Time.zone.parse` reads an offset-less time in the user's own Canvas
+ * time zone, the same zone it uses for a bare date. A full timestamp, or
+ * anything else, passes through unchanged for Canvas to judge.
+ */
+export function inclusiveEndDate(end: string | undefined): string | undefined {
+  const m = end === undefined ? null : BARE_DATE.exec(end.trim());
+  return m ? `${m[1]}-${m[2]}-${m[3]}T23:59:59.999` : end;
+}
+
 export function registerPlannerTools(
   server: McpServer,
   client: CanvasClient,
@@ -77,8 +96,12 @@ export function registerPlannerTools(
 ): void {
   const argsSchema = z.object({
     observeeId: observeeIdArg(observees),
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
+    startDate: z.string().optional().describe(
+      'Start of the window, inclusive: YYYY-MM-DD (from the start of that day) or an ISO 8601 timestamp.',
+    ),
+    endDate: z.string().optional().describe(
+      'End of the window, inclusive: YYYY-MM-DD includes that whole day; an ISO 8601 timestamp is used as given.',
+    ),
     contextCodes: z.array(z.string()).optional(),
     filter: z.enum(['new_activity']).optional(),
     view: z.enum(['full', 'brief']).optional().describe(
@@ -109,7 +132,7 @@ export function registerPlannerTools(
       : '/api/v1/planner/items';
     const path = buildPath(base, {
       start_date: args.startDate,
-      end_date: args.endDate,
+      end_date: inclusiveEndDate(args.endDate),
       'context_codes[]': args.contextCodes,
       filter: args.filter,
     });

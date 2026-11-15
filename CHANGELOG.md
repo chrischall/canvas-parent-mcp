@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/chrischall/canvas-parent-mcp/compare/v2.3.0...v2.3.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **deps:** bump the production-dependencies group with 4 updates ([#285](https://github.com/chrischall/canvas-parent-mcp/issues/285)) ([4310cc9](https://github.com/chrischall/canvas-parent-mcp/commit/4310cc99227722b63e363d44e69615285e330479))
+
 ## [2.3.0](https://github.com/chrischall/canvas-parent-mcp/compare/v2.2.3...v2.3.0) (2026-11-11)
 
 
